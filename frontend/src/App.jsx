@@ -38,7 +38,7 @@ export default function App() {
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showSettleUp, setShowSettleUp] = useState(false);
   const [showAddGroup, setShowAddGroup] = useState(false);
-  const [infoModal, setInfoModal] = useState(null); // null, 'terms', 'privacy'
+  const [termsBackPage, setTermsBackPage] = useState('landing');
 
   // Form Inputs
   const [authEmail, setAuthEmail] = useState('');
@@ -468,9 +468,9 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', fontSize: '11px', color: 'var(--dark-text-secondary)', fontFamily: 'var(--font-body)' }}>
-            <span style={{ cursor: 'pointer' }} onClick={() => setInfoModal('terms')}>Terms</span>
+            <span style={{ cursor: 'pointer' }} onClick={() => { setTermsBackPage('landing'); setPage('terms'); }}>Terms</span>
             <span>|</span>
-            <span style={{ cursor: 'pointer' }} onClick={() => setInfoModal('privacy')}>Privacy Policy</span>
+            <span style={{ cursor: 'pointer' }} onClick={() => { setTermsBackPage('landing'); setPage('privacy'); }}>Privacy Policy</span>
             <span>|</span>
             <span style={{ cursor: 'pointer' }}>
               <a 
@@ -621,7 +621,7 @@ export default function App() {
             </div>
 
             <p style={{ fontSize: '11px', color: 'var(--dark-text-secondary)', lineHeight: '1.6' }}>
-              By signing up, you accept the Splitwise <span style={{ color: 'var(--primary-teal)', cursor: 'pointer' }}>Terms of Service</span> and <span style={{ color: 'var(--primary-teal)', cursor: 'pointer' }}>Privacy Policy</span>.
+              By signing up, you accept the Splitwise <span style={{ color: 'var(--primary-teal)', cursor: 'pointer' }} onClick={() => { setTermsBackPage('signup'); setPage('terms'); }}>Terms of Service</span> and <span style={{ color: 'var(--primary-teal)', cursor: 'pointer' }} onClick={() => { setTermsBackPage('signup'); setPage('privacy'); }}>Privacy Policy</span>.
             </p>
 
             <button type="submit" className="btn-primary" style={{ marginTop: '20px' }}>
@@ -1493,83 +1493,97 @@ export default function App() {
         </div>
       )}
 
-      {/* TERMS & PRIVACY POPUP MODAL */}
-      {infoModal && (
-        <div style={{
-          position: 'absolute',
-          top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.75)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 200,
-          transition: 'all 0.3s ease'
-        }} onClick={() => setInfoModal(null)}>
-          <div 
-            className="animate-fade-in"
-            style={{
-              width: '90%',
-              maxWidth: '380px',
-              backgroundColor: '#22252a',
-              borderRadius: '16px',
-              border: '1px solid #2e333d',
-              padding: '24px',
-              color: 'white',
-              boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: '16px'
-            }} 
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>
-                {infoModal === 'terms' ? 'Terms of Service' : 'Privacy Policy'}
-              </h3>
-              <button 
-                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '20px', cursor: 'pointer' }}
-                onClick={() => setInfoModal(null)}
-              >
-                &times;
-              </button>
-            </div>
-
-            <div style={{ 
-              fontSize: '13px', 
-              color: 'var(--dark-text-secondary)', 
-              lineHeight: '1.6',
-              maxHeight: '220px',
-              overflowY: 'auto',
-              paddingRight: '4px'
-            }}>
-              {infoModal === 'terms' ? (
-                <div>
-                  <p style={{ marginBottom: '10px' }}><strong>1. Acceptance of Terms</strong></p>
-                  <p style={{ marginBottom: '15px' }}>By accessing and using this Splitwise Clone demonstration app, you agree to divide all expenses fairly and settle outstanding balances in a timely manner.</p>
-                  <p style={{ marginBottom: '10px' }}><strong>2. Usage Guidelines</strong></p>
-                  <p style={{ marginBottom: '15px' }}>This application is designed solely for testing, portfolio, and educational purposes. No real currency is processed, transferred, or stored by this software.</p>
-                  <p><strong>3. Disclaimer</strong></p>
-                  <p>The developer is not responsible for any imaginary or simulated financial discrepancies arising from usage of this split tracker.</p>
-                </div>
-              ) : (
-                <div>
-                  <p style={{ marginBottom: '10px' }}><strong>1. Data Collection</strong></p>
-                  <p style={{ marginBottom: '15px' }}>This Splitwise Clone does not collect, store, or sell any personal identifying information. Any login or registration details are saved locally in the development server database.</p>
-                  <p style={{ marginBottom: '10px' }}><strong>2. Third-Party Integrations</strong></p>
-                  <p style={{ marginBottom: '15px' }}>Real Google OAuth 2.0 logins are handled securely via official Google Identity redirection. We only retrieve your name, email, and avatar picture upon successful authorization.</p>
-                  <p><strong>3. Local Cache</strong></p>
-                  <p>State and mock login selectors are kept within your current browser session and database for local testing purposes.</p>
-                </div>
-              )}
-            </div>
-
-            <button 
-              className="btn-primary" 
-              style={{ width: '100%', padding: '10px', fontSize: '14px', borderRadius: '8px', marginTop: '4px' }}
-              onClick={() => setInfoModal(null)}
-            >
-              Close
+      {/* 5. TERMS OF SERVICE PAGE */}
+      {page === 'terms' && (
+        <div className="theme-dark animate-slide-in" style={{ flex: 1, padding: 0, display: 'flex', flexDirection: 'column', backgroundColor: '#18191b', overflow: 'hidden' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', padding: '16px 20px', backgroundColor: '#131415', borderBottom: '1px solid #2e333d', gap: '16px' }}>
+            <button style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }} onClick={() => setPage(termsBackPage)}>
+              <ArrowLeft size={24} />
             </button>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600, color: 'white', margin: 0 }}>
+              Terms of Service :: Splitwise
+            </h2>
+          </div>
+
+          {/* Content */}
+          <div style={{ flex: 1, padding: '24px 20px', overflowY: 'auto', backgroundColor: '#1c1e21', fontFamily: 'var(--font-body)', color: '#cfd2d6' }}>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, color: 'white', marginBottom: '8px', lineHeight: '1.2' }}>
+              Splitwise Terms of Service
+            </h1>
+            <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '24px' }}>
+              Last updated: February 8th, 2024
+            </p>
+
+            <p style={{ fontSize: '14px', lineHeight: '1.6', marginBottom: '20px' }}>
+              Splitwise is a shared ledger for friends, colleagues and family to keep track of expenses. Bills, IOUs, debts and payments recorded on Splitwise are informal records, and not legally binding contracts of some kind. We offer the Splitwise service "as-is" without a warranty. Splitwise® is a work-in-progress, so some features of our website and apps may not work exactly as planned. We may stop offering or restrict certain services or features at any time. Please be patient with us and we'll always do our best to support you.
+            </p>
+
+            <p style={{ fontSize: '14px', lineHeight: '1.6', marginBottom: '24px' }}>
+              We will modify our Terms Of Use and <span style={{ color: '#1CC29F', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => setPage('privacy')}>Privacy Policy</span> periodically and post the most current version on this webpage, <a href="https://www.splitwise.com/terms" target="_blank" rel="noopener noreferrer" style={{ color: '#1CC29F', textDecoration: 'underline' }}>https://www.splitwise.com/terms</a>. Here are the policies:
+            </p>
+
+            <hr style={{ border: 'none', borderTop: '1px solid #2e333d', marginBottom: '24px' }} />
+
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'white', marginBottom: '16px' }}>
+              Terms Of Use
+            </h3>
+
+            <ul style={{ paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
+              <li>
+                You agree to the terms of service of any payment service linked to by Splitwise.
+              </li>
+              <li>
+                <strong>SMS:</strong> Splitwise offers the option to our customers to receive one-time passwords and account notifications via SMS to a cell phone. SMS message frequency varies. Message and data rates may apply. To stop receiving messages, you may remove your phone number from your account settings, or contact support at support@splitwise.com for assistance. You can also text STOP to stop or HELP for help. Phone carriers are not liable for any delays or undelivered messages.
+              </li>
+            </ul>
+          </div>
+        </div>
+      )}
+
+      {/* 6. PRIVACY POLICY PAGE */}
+      {page === 'privacy' && (
+        <div className="theme-dark animate-slide-in" style={{ flex: 1, padding: 0, display: 'flex', flexDirection: 'column', backgroundColor: '#18191b', overflow: 'hidden' }}>
+          {/* Header */}
+          <div style={{ display: 'flex', alignItems: 'center', padding: '16px 20px', backgroundColor: '#131415', borderBottom: '1px solid #2e333d', gap: '16px' }}>
+            <button style={{ background: 'none', border: 'none', color: 'white', cursor: 'pointer', display: 'flex', alignItems: 'center', padding: 0 }} onClick={() => setPage(termsBackPage)}>
+              <ArrowLeft size={24} />
+            </button>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 600, color: 'white', margin: 0 }}>
+              Privacy Policy :: Splitwise
+            </h2>
+          </div>
+
+          {/* Content */}
+          <div style={{ flex: 1, padding: '24px 20px', overflowY: 'auto', backgroundColor: '#1c1e21', fontFamily: 'var(--font-body)', color: '#cfd2d6' }}>
+            <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, color: 'white', marginBottom: '8px', lineHeight: '1.2' }}>
+              Splitwise Privacy Policy
+            </h1>
+            <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '24px' }}>
+              Last updated: February 8th, 2024
+            </p>
+
+            <p style={{ fontSize: '14px', lineHeight: '1.6', marginBottom: '20px' }}>
+              Splitwise is committed to protecting your privacy. This policy describes how we collect, use, and handle your data when you use our website, mobile apps, and services.
+            </p>
+
+            <hr style={{ border: 'none', borderTop: '1px solid #2e333d', marginBottom: '24px' }} />
+
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'white', marginBottom: '16px' }}>
+              Data Usage and Storage
+            </h3>
+
+            <ul style={{ paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
+              <li>
+                <strong>Data Collection:</strong> We do not collect, store, or sell any personal identifying information. Any login or registration details are saved locally in the development server database.
+              </li>
+              <li>
+                <strong>Third-Party Integrations:</strong> Real Google OAuth 2.0 logins are handled securely via official Google Identity redirection. We only retrieve your name, email, and avatar picture upon successful authorization.
+              </li>
+              <li>
+                <strong>Local Cache:</strong> State and mock login selectors are kept within your current browser session and database for local testing purposes.
+              </li>
+            </ul>
           </div>
         </div>
       )}
