@@ -815,83 +815,83 @@ export default function App() {
                     </svg>
                   </div>
                   
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
                     {/* Item 1 */}
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                      <div style={{ backgroundColor: '#108573', width: '38px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5S19 4 17.5 5.5L14 9 5.8 7.2 4.2 8.8l8 4.7-4 4-2.8-.7L4 18.2l3.5 1.3 1.3 3.5 1.4-1.4-.7-2.8 4-4 4.7 8 1.6-1.6z" />
-                        </svg>
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{ backgroundColor: '#108573', width: '38px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5S19 4 17.5 5.5L14 9 5.8 7.2 4.2 8.8l8 4.7-4 4-2.8-.7L4 18.2l3.5 1.3 1.3 3.5 1.4-1.4-.7-2.8 4-4 4.7 8 1.6-1.6z" />
+                          </svg>
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontSize: '15px', fontWeight: 600, color: '#2e333d' }}>Beach trip</span>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                             <span style={{ fontSize: '11px', color: '#108573' }}>you are owed</span>
                             <span style={{ fontSize: '14px', fontWeight: 600, color: '#108573' }}>$100.00</span>
                           </div>
                         </div>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
-                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '38px', flexShrink: 0 }}>
-                            <div style={{ width: '1.5px', height: '8px', backgroundColor: '#cbd5e1', marginTop: '-4px' }} />
-                            <div style={{ display: 'flex', width: '100%' }}>
-                              <div style={{ width: '50%', height: '8px', borderLeft: '1.5px solid #cbd5e1', borderBottom: '1.5px solid #cbd5e1', borderBottomLeftRadius: '4px' }} />
-                              <div style={{ width: '50%' }} />
-                            </div>
-                          </div>
-                          <span style={{ fontSize: '13px', color: '#718096', marginLeft: '-24px', marginTop: '6px' }}>David owes you <span style={{ color: '#108573' }}>$100.00</span></span>
+                      </div>
+                      
+                      <div style={{ position: 'relative', paddingLeft: '38px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', padding: '6px 0 6px 12px', position: 'relative' }}>
+                          <svg style={{ position: 'absolute', left: '-19px', top: '-10px', width: '20px', height: '26px' }}>
+                            <path d="M 0 0 L 0 16 L 12 16" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
+                          </svg>
+                          <span style={{ fontSize: '13px', color: '#718096' }}>
+                            David owes you <span style={{ color: '#108573', fontWeight: 500 }}>$100.00</span>
+                          </span>
                         </div>
                       </div>
                     </div>
 
                     {/* Item 2 */}
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
-                      <div style={{
-                        backgroundImage: 'linear-gradient(to bottom, #e0f2fe, #f0f9ff)',
-                        width: '38px',
-                        height: '38px',
-                        borderRadius: '10px',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                        border: '1px solid #bae6fd',
-                        overflow: 'hidden'
-                      }}>
-                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0369a1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                          <polyline points="9 22 9 12 15 12 15 22" />
-                        </svg>
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        <div style={{
+                          backgroundImage: 'linear-gradient(to bottom, #e0f2fe, #f0f9ff)',
+                          width: '38px',
+                          height: '38px',
+                          borderRadius: '10px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          border: '1px solid #bae6fd',
+                          overflow: 'hidden'
+                        }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0369a1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                            <polyline points="9 22 9 12 15 12 15 22" />
+                          </svg>
+                        </div>
+                        <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                           <span style={{ fontSize: '15px', fontWeight: 600, color: '#2e333d' }}>House stuff</span>
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
                             <span style={{ fontSize: '11px', color: '#ff652f' }}>you owe</span>
                             <span style={{ fontSize: '14px', fontWeight: 600, color: '#ff652f' }}>$35.36</span>
                           </div>
                         </div>
-                        
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '38px', flexShrink: 0 }}>
-                              <div style={{ width: '1.5px', height: '14px', backgroundColor: '#cbd5e1', marginTop: '-4px', position: 'relative' }}>
-                                <div style={{ position: 'absolute', left: 0, bottom: 0, width: '8px', height: '1.5px', backgroundColor: '#cbd5e1' }} />
-                              </div>
-                            </div>
-                            <span style={{ fontSize: '13px', color: '#718096', marginLeft: '-24px', marginTop: '6px' }}>You owe Brooklyn S. <span style={{ color: '#ff652f' }}>$105.36</span></span>
-                          </div>
-                          
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '38px', flexShrink: 0 }}>
-                              <div style={{ width: '1.5px', height: '8px', backgroundColor: '#cbd5e1', marginTop: '-12px' }} />
-                              <div style={{ display: 'flex', width: '100%' }}>
-                                <div style={{ width: '50%', height: '8px', borderLeft: '1.5px solid #cbd5e1', borderBottom: '1.5px solid #cbd5e1', borderBottomLeftRadius: '4px' }} />
-                                <div style={{ width: '50%' }} />
-                              </div>
-                            </div>
-                            <span style={{ fontSize: '13px', color: '#718096', marginLeft: '-24px', marginTop: '6px' }}>Earl E. owes you <span style={{ color: '#108573' }}>$70.00</span></span>
-                          </div>
+                      </div>
+                      
+                      <div style={{ position: 'relative', paddingLeft: '38px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', padding: '6px 0 6px 12px', position: 'relative' }}>
+                          <svg style={{ position: 'absolute', left: '-19px', top: '-10px', width: '20px', height: '40px' }}>
+                            <line x1="0" y1="0" x2="0" y2="40" stroke="#cbd5e1" strokeWidth="1.5" />
+                            <line x1="0" y1="16" x2="12" y2="16" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
+                          </svg>
+                          <span style={{ fontSize: '13px', color: '#718096' }}>
+                            You owe Brooklyn S. <span style={{ color: '#ff652f', fontWeight: 500 }}>$105.36</span>
+                          </span>
+                        </div>
+
+                        <div style={{ display: 'flex', alignItems: 'center', padding: '6px 0 6px 12px', position: 'relative' }}>
+                          <svg style={{ position: 'absolute', left: '-19px', top: '-14px', width: '20px', height: '30px' }}>
+                            <path d="M 0 0 L 0 16 L 12 16" fill="none" stroke="#cbd5e1" strokeWidth="1.5" strokeLinecap="round" />
+                          </svg>
+                          <span style={{ fontSize: '13px', color: '#718096' }}>
+                            Earl E. owes you <span style={{ color: '#108573', fontWeight: 500 }}>$70.00</span>
+                          </span>
                         </div>
                       </div>
                     </div>
