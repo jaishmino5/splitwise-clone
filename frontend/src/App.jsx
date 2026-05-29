@@ -1566,8 +1566,22 @@ export default function App() {
               Welcome to Splitwise’s Privacy Statement. Your right to privacy and online security is important. This Privacy Statement describes Splitwise’s collection, protection, disclosure, and use of the personal information provided to or collected through our service. This Privacy Statement applies to all of Splitwise’s websites, mobile applications, and online services that link to or reference this Privacy Statement.
             </p>
 
-            <p style={{ fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
+            <p style={{ fontSize: '14px', lineHeight: '1.6', marginBottom: '20px' }}>
               If you do not agree with any of the practices described in this Privacy Statement, please do not use our services.
+            </p>
+
+            <hr style={{ border: 'none', borderTop: '1px solid #2e333d', margin: '24px 0' }} />
+
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'white', marginBottom: '12px' }}>
+              Here's a quick overview
+            </h3>
+
+            <p style={{ fontSize: '14px', lineHeight: '1.6', marginBottom: '20px' }}>
+              Splitwise is a shared ledger for friends. You choose who you share your expenses with and what kind of expenses you want to share. When you share an expense, the details of those transactions are visible to those you share them with, whether an individual friend or a group. Anyone shared on an expense or seeing the expense in the group has the ability to edit, delete, and undelete the expenses that have been shared with them. Expenses you add in Splitwise are not made public.
+            </p>
+
+            <p style={{ fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
+              In order to use Splitwise, you will need to create an account, which requires providing some registration information such as name, email address and phone number. We use this information to manage your account including contacting you when necessary. The information can also be used so that your friends can find you and so you can access your account from anywhere.
             </p>
           </div>
         </div>
