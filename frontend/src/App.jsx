@@ -743,12 +743,12 @@ export default function App() {
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'space-between',
-            padding: '24px',
-            backgroundColor: 
-              tutorialStep === 1 ? '#ffe1d6' : 
-              tutorialStep === 2 ? '#e5f6f3' : 
-              tutorialStep === 3 ? '#e8ecf1' : '#ebf5f3',
-            transition: 'background-color 0.4s ease',
+            padding: '24px 24px 16px 24px',
+            background: 
+              tutorialStep === 1 ? 'linear-gradient(to bottom, #ffe1d5 0%, #ffe1d5 60%, #ffffff 85%)' : 
+              tutorialStep === 2 ? 'linear-gradient(to bottom, #e5f6f3 0%, #e5f6f3 60%, #ffffff 85%)' : 
+              tutorialStep === 3 ? 'linear-gradient(to bottom, #e8ecf1 0%, #e8ecf1 60%, #ffffff 85%)' : '#ebf5f3',
+            transition: 'background 0.4s ease',
             cursor: tutorialStep < 4 ? 'pointer' : 'default',
             userSelect: 'none',
             height: '100%',
@@ -896,9 +896,9 @@ export default function App() {
               </div>
 
               {/* Beach scene SVG */}
-              <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', marginTop: 'auto' }}>
-                <svg viewBox="0 0 400 240" width="100%" height="200" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ maxHeight: '20vh' }}>
-                  <path d="M 0 140 L 0 0 L 400 0 L 400 140 Z" fill="url(#skyGrad)" />
+              <div style={{ width: 'calc(100% + 48px)', margin: 'auto -24px 0 -24px', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', zIndex: 1 }}>
+                <svg viewBox="0 0 400 240" width="100%" height="200" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ maxHeight: '22vh', display: 'block' }}>
+                  {/* Sky background is transparent to show page gradient */}
                   <circle cx="200" cy="140" r="40" fill="#ff5a36" />
                   
                   <path d="M200 140 L140 0 L160 0 Z" fill="#ffe1d6" opacity="0.3" />
@@ -1045,9 +1045,9 @@ export default function App() {
               </div>
 
               {/* House/Grocery SVG */}
-              <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', marginTop: 'auto' }}>
-                <svg viewBox="0 0 400 220" width="100%" height="180" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ maxHeight: '20vh' }}>
-                  <rect width="400" height="220" fill="#e5f6f3" />
+              <div style={{ width: 'calc(100% + 48px)', margin: 'auto -24px 0 -24px', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', zIndex: 1 }}>
+                <svg viewBox="0 0 400 220" width="100%" height="180" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ maxHeight: '22vh', display: 'block' }}>
+                  {/* Background is transparent to show page gradient */}
                   
                   <path d="M-50 220 Q150 140 450 220 Z" fill="#9cdbc8" />
                   <path d="M-50 220 Q250 170 450 220 Z" fill="#cbece2" opacity="0.6" />
@@ -1145,9 +1145,9 @@ export default function App() {
               </div>
 
               {/* Table SVG area with overlay card */}
-              <div style={{ width: '100%', position: 'relative', marginTop: '20px', minHeight: '260px' }}>
-                <svg viewBox="0 0 400 240" width="100%" height="240" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ zIndex: 1 }}>
-                  <rect width="400" height="240" fill="#e8ecf1" />
+              <div style={{ width: 'calc(100% + 48px)', margin: '20px -24px 0 -24px', position: 'relative', minHeight: '260px', zIndex: 1 }}>
+                <svg viewBox="0 0 400 240" width="100%" height="240" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ zIndex: 1, display: 'block' }}>
+                  {/* Background is transparent to show page gradient */}
 
                   <g opacity="0.12">
                     <rect x="250" y="30" width="45" height="35" rx="4" fill="#000000" transform="rotate(25 250 30)" />
@@ -1213,7 +1213,7 @@ export default function App() {
                   width: '210px',
                   position: 'absolute',
                   bottom: '10px',
-                  right: '10px',
+                  right: '34px',
                   display: 'flex',
                   flexDirection: 'column',
                   gap: '12px',
@@ -1365,42 +1365,61 @@ export default function App() {
             </div>
           )}
 
-          {/* Navigation Dots (only steps 1-3) */}
+          {/* Navigation Dots & Skip Tour Link (only steps 1-3) */}
           {tutorialStep < 4 && (
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '20px', zIndex: 10 }}>
-              <div 
-                onClick={(e) => { e.stopPropagation(); setTutorialStep(1); }} 
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '16px', zIndex: 10 }}>
+              {/* Dots */}
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <div 
+                  onClick={(e) => { e.stopPropagation(); setTutorialStep(1); }} 
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: tutorialStep === 1 ? '#1cc29f' : '#bce8e1',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.3s ease'
+                  }} 
+                />
+                <div 
+                  onClick={(e) => { e.stopPropagation(); setTutorialStep(2); }} 
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: tutorialStep === 2 ? '#1cc29f' : '#bce8e1',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.3s ease'
+                  }} 
+                />
+                <div 
+                  onClick={(e) => { e.stopPropagation(); setTutorialStep(3); }} 
+                  style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    backgroundColor: tutorialStep === 3 ? '#1cc29f' : '#bce8e1',
+                    cursor: 'pointer',
+                    transition: 'background-color 0.3s ease'
+                  }} 
+                />
+              </div>
+
+              {/* Skip Tour Link */}
+              <span 
+                onClick={(e) => { e.stopPropagation(); setTutorialStep(4); }}
                 style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  backgroundColor: tutorialStep === 1 ? '#1cc29f' : '#bce8e1',
+                  color: '#108573',
+                  fontSize: '15px',
+                  fontWeight: 600,
+                  marginTop: '16px',
                   cursor: 'pointer',
-                  transition: 'background-color 0.3s ease'
-                }} 
-              />
-              <div 
-                onClick={(e) => { e.stopPropagation(); setTutorialStep(2); }} 
-                style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  backgroundColor: tutorialStep === 2 ? '#1cc29f' : '#bce8e1',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.3s ease'
-                }} 
-              />
-              <div 
-                onClick={(e) => { e.stopPropagation(); setTutorialStep(3); }} 
-                style={{
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  backgroundColor: tutorialStep === 3 ? '#1cc29f' : '#bce8e1',
-                  cursor: 'pointer',
-                  transition: 'background-color 0.3s ease'
-                }} 
-              />
+                  display: 'block',
+                  textDecoration: 'none'
+                }}
+              >
+                Skip tour
+              </span>
             </div>
           )}
         </div>
