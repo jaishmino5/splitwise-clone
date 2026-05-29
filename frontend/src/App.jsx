@@ -38,6 +38,7 @@ export default function App() {
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showSettleUp, setShowSettleUp] = useState(false);
   const [showAddGroup, setShowAddGroup] = useState(false);
+  const [infoModal, setInfoModal] = useState(null); // null, 'terms', 'privacy'
 
   // Form Inputs
   const [authEmail, setAuthEmail] = useState('');
@@ -467,11 +468,18 @@ export default function App() {
           </div>
 
           <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', fontSize: '11px', color: 'var(--dark-text-secondary)', fontFamily: 'var(--font-body)' }}>
-            <span style={{ cursor: 'pointer' }}>Terms</span>
+            <span style={{ cursor: 'pointer' }} onClick={() => setInfoModal('terms')}>Terms</span>
             <span>|</span>
-            <span style={{ cursor: 'pointer' }}>Privacy Policy</span>
+            <span style={{ cursor: 'pointer' }} onClick={() => setInfoModal('privacy')}>Privacy Policy</span>
             <span>|</span>
-            <span style={{ cursor: 'pointer' }}>Contact us</span>
+            <span style={{ cursor: 'pointer' }}>
+              <a 
+                href="mailto:jaish6553@gmail.com?subject=Contact%20Splitwise%20Support&body=Hi%20Jaish%2C%0A%0AThis%20is%20a%20demo%20message%20sent%20from%20the%20Splitwise%20Clone%20application.%0A%0ARegards%2C%0A[Demo%20User]" 
+                style={{ color: 'inherit', textDecoration: 'none' }}
+              >
+                Contact us
+              </a>
+            </span>
           </div>
         </div>
       )}
@@ -1481,6 +1489,87 @@ export default function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* TERMS & PRIVACY POPUP MODAL */}
+      {infoModal && (
+        <div style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 200,
+          transition: 'all 0.3s ease'
+        }} onClick={() => setInfoModal(null)}>
+          <div 
+            className="animate-fade-in"
+            style={{
+              width: '90%',
+              maxWidth: '380px',
+              backgroundColor: '#22252a',
+              borderRadius: '16px',
+              border: '1px solid #2e333d',
+              padding: '24px',
+              color: 'white',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.5)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '16px'
+            }} 
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700 }}>
+                {infoModal === 'terms' ? 'Terms of Service' : 'Privacy Policy'}
+              </h3>
+              <button 
+                style={{ background: 'none', border: 'none', color: '#94a3b8', fontSize: '20px', cursor: 'pointer' }}
+                onClick={() => setInfoModal(null)}
+              >
+                &times;
+              </button>
+            </div>
+
+            <div style={{ 
+              fontSize: '13px', 
+              color: 'var(--dark-text-secondary)', 
+              lineHeight: '1.6',
+              maxHeight: '220px',
+              overflowY: 'auto',
+              paddingRight: '4px'
+            }}>
+              {infoModal === 'terms' ? (
+                <div>
+                  <p style={{ marginBottom: '10px' }}><strong>1. Acceptance of Terms</strong></p>
+                  <p style={{ marginBottom: '15px' }}>By accessing and using this Splitwise Clone demonstration app, you agree to divide all expenses fairly and settle outstanding balances in a timely manner.</p>
+                  <p style={{ marginBottom: '10px' }}><strong>2. Usage Guidelines</strong></p>
+                  <p style={{ marginBottom: '15px' }}>This application is designed solely for testing, portfolio, and educational purposes. No real currency is processed, transferred, or stored by this software.</p>
+                  <p><strong>3. Disclaimer</strong></p>
+                  <p>The developer is not responsible for any imaginary or simulated financial discrepancies arising from usage of this split tracker.</p>
+                </div>
+              ) : (
+                <div>
+                  <p style={{ marginBottom: '10px' }}><strong>1. Data Collection</strong></p>
+                  <p style={{ marginBottom: '15px' }}>This Splitwise Clone does not collect, store, or sell any personal identifying information. Any login or registration details are saved locally in the development server database.</p>
+                  <p style={{ marginBottom: '10px' }}><strong>2. Third-Party Integrations</strong></p>
+                  <p style={{ marginBottom: '15px' }}>Real Google OAuth 2.0 logins are handled securely via official Google Identity redirection. We only retrieve your name, email, and avatar picture upon successful authorization.</p>
+                  <p><strong>3. Local Cache</strong></p>
+                  <p>State and mock login selectors are kept within your current browser session and database for local testing purposes.</p>
+                </div>
+              )}
+            </div>
+
+            <button 
+              className="btn-primary" 
+              style={{ width: '100%', padding: '10px', fontSize: '14px', borderRadius: '8px', marginTop: '4px' }}
+              onClick={() => setInfoModal(null)}
+            >
+              Close
+            </button>
           </div>
         </div>
       )}
