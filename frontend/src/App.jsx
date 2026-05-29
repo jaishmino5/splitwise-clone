@@ -231,7 +231,7 @@ export default function App() {
   // Trigger Google OAuth 2.0 redirect flow (Implicit Grant)
   const handleGoogleLoginClick = () => {
     const clientId = "204315747168-hjteb1ojmu55qmu7a364nppf4c76tuo9.apps.googleusercontent.com";
-    const redirectUri = window.location.origin + '/';
+    const redirectUri = window.location.origin;
     const responseType = "id_token";
     const scope = "openid email profile";
     const state = "google_login";
