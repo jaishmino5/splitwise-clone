@@ -467,15 +467,15 @@ export default function App() {
             </button>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '15px', fontSize: '11px', color: 'var(--dark-text-secondary)', fontFamily: 'var(--font-body)' }}>
-            <span style={{ cursor: 'pointer' }} onClick={() => { setTermsBackPage('landing'); setPage('terms'); }}>Terms</span>
+          <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', fontSize: '11px', color: 'var(--dark-text-secondary)', fontFamily: 'var(--font-body)' }}>
+            <span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => { setTermsBackPage('landing'); setPage('terms'); }}>Terms</span>
             <span>|</span>
-            <span style={{ cursor: 'pointer' }} onClick={() => { setTermsBackPage('landing'); setPage('privacy'); }}>Privacy Policy</span>
+            <span style={{ cursor: 'pointer', textDecoration: 'underline' }} onClick={() => { setTermsBackPage('landing'); setPage('privacy'); }}>Privacy Policy</span>
             <span>|</span>
             <span style={{ cursor: 'pointer' }}>
               <a 
                 href="mailto:jaish6553@gmail.com?subject=Contact%20Splitwise%20Support&body=Hi%20Jaish%2C%0A%0AThis%20is%20a%20demo%20message%20sent%20from%20the%20Splitwise%20Clone%20application.%0A%0ARegards%2C%0A[Demo%20User]" 
-                style={{ color: 'inherit', textDecoration: 'none' }}
+                style={{ color: 'inherit', textDecoration: 'underline' }}
               >
                 Contact us
               </a>
