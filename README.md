@@ -53,7 +53,7 @@ This project was developed in partnership with **Antigravity** (Google DeepMind'
 
 ---
 
-## 🤖 AI Collaboration Details
+## 🌟 AI Collaboration Details
 - **Primary AI Agent:** Antigravity (Google DeepMind)
 - **Role:** Acting as both Product Manager and Junior Developer.
 - **Files Maintained:**
