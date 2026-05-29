@@ -24,6 +24,7 @@ export default function App() {
   const [page, setPage] = useState('landing'); // 'landing', 'login', 'signup', 'dashboard', 'group-details'
   const [selectedGroupId, setSelectedGroupId] = useState(null);
   const [activeTab, setActiveTab] = useState('groups'); // 'groups', 'friends', 'activity', 'account'
+  const [tutorialStep, setTutorialStep] = useState(1);
 
   // Application Data State
   const [users, setUsers] = useState([]);
@@ -186,7 +187,8 @@ export default function App() {
       const data = await res.json();
       if (res.ok) {
         setUser(data);
-        setPage('dashboard');
+        setPage('tutorial');
+        setTutorialStep(1);
         setSignupName('');
         setSignupEmail('');
         setSignupPassword('');
@@ -210,7 +212,12 @@ export default function App() {
       const data = await res.json();
       if (res.ok) {
         setUser(data);
-        setPage('dashboard');
+        if (data.isNewUser) {
+          setPage('tutorial');
+          setTutorialStep(1);
+        } else {
+          setPage('dashboard');
+        }
         fetchUsers();
       } else {
         alert(data.error || "Google authentication failed");
@@ -723,6 +730,683 @@ export default function App() {
               To continue, Google will share your name, email address and profile picture with Splitwise. Before using this app, review its <span style={{ color: 'var(--primary-teal)', cursor: 'pointer' }}>privacy policy</span> and <span style={{ color: 'var(--primary-teal)', cursor: 'pointer' }}>terms of service</span>.
             </p>
           </div>
+        </div>
+      )}
+
+
+      {/* 4. ONBOARDING TOUR / TUTORIAL PAGE */}
+      {page === 'tutorial' && user && (
+        <div 
+          onClick={() => {
+            if (tutorialStep < 4) {
+              setTutorialStep(tutorialStep + 1);
+            }
+          }}
+          style={{
+            flex: 1,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: 'space-between',
+            padding: '24px',
+            backgroundColor: 
+              tutorialStep === 1 ? '#ffe1d6' : 
+              tutorialStep === 2 ? '#e5f6f3' : 
+              tutorialStep === 3 ? '#e8ecf1' : '#ebf5f3',
+            transition: 'background-color 0.4s ease',
+            cursor: tutorialStep < 4 ? 'pointer' : 'default',
+            userSelect: 'none',
+            height: '100%',
+            overflow: 'hidden',
+            position: 'relative'
+          }}
+          className="animate-fade-in"
+        >
+          {/* STEP 1: WELCOME SCREEN */}
+          {tutorialStep === 1 && (
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }} className="animate-fade-in">
+              <div style={{ textAlign: 'left' }}>
+                <h1 style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '36px',
+                  fontWeight: 700,
+                  color: '#2e333d',
+                  lineHeight: '1.15',
+                  letterSpacing: '-0.5px',
+                  marginTop: '10px'
+                }}>
+                  Welcome to<br />Splitwise,<br />{user.name ? user.name.split(' ')[0] : 'Jaish'}!
+                </h1>
+                <p style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '18px',
+                  color: '#4e5664',
+                  marginTop: '12px',
+                  lineHeight: '1.3'
+                }}>
+                  Splitwise keeps track of<br />balances between friends.
+                </p>
+
+                {/* Mock Balance Summary Card */}
+                <div style={{
+                  backgroundColor: 'white',
+                  borderRadius: '24px',
+                  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.06)',
+                  padding: '20px',
+                  marginTop: '24px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '16px',
+                  textAlign: 'left'
+                }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9', paddingBottom: '12px' }}>
+                    <span style={{ fontSize: '15px', fontWeight: 600, color: '#2e333d' }}>
+                      Overall, you are owed <span style={{ color: '#108573' }}>$64.64</span>
+                    </span>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#718096" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="4" y1="21" x2="4" y2="14" />
+                      <line x1="4" y1="10" x2="4" y2="3" />
+                      <line x1="12" y1="21" x2="12" y2="12" />
+                      <line x1="12" y1="8" x2="12" y2="3" />
+                      <line x1="20" y1="21" x2="20" y2="16" />
+                      <line x1="20" y1="12" x2="20" y2="3" />
+                      <line x1="1" y1="14" x2="7" y2="14" />
+                      <line x1="9" y1="8" x2="15" y2="8" />
+                      <line x1="17" y1="16" x2="23" y2="16" />
+                    </svg>
+                  </div>
+                  
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    {/* Item 1 */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                      <div style={{ backgroundColor: '#108573', width: '38px', height: '38px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5S19 4 17.5 5.5L14 9 5.8 7.2 4.2 8.8l8 4.7-4 4-2.8-.7L4 18.2l3.5 1.3 1.3 3.5 1.4-1.4-.7-2.8 4-4 4.7 8 1.6-1.6z" />
+                        </svg>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                          <span style={{ fontSize: '15px', fontWeight: 600, color: '#2e333d' }}>Beach trip</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                            <span style={{ fontSize: '11px', color: '#108573' }}>you are owed</span>
+                            <span style={{ fontSize: '14px', fontWeight: 600, color: '#108573' }}>$100.00</span>
+                          </div>
+                        </div>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '38px', flexShrink: 0 }}>
+                            <div style={{ width: '1.5px', height: '8px', backgroundColor: '#cbd5e1', marginTop: '-4px' }} />
+                            <div style={{ display: 'flex', width: '100%' }}>
+                              <div style={{ width: '50%', height: '8px', borderLeft: '1.5px solid #cbd5e1', borderBottom: '1.5px solid #cbd5e1', borderBottomLeftRadius: '4px' }} />
+                              <div style={{ width: '50%' }} />
+                            </div>
+                          </div>
+                          <span style={{ fontSize: '13px', color: '#718096', marginLeft: '-24px', marginTop: '6px' }}>David owes you <span style={{ color: '#108573' }}>$100.00</span></span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Item 2 */}
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '12px' }}>
+                      <div style={{
+                        backgroundImage: 'linear-gradient(to bottom, #e0f2fe, #f0f9ff)',
+                        width: '38px',
+                        height: '38px',
+                        borderRadius: '10px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        flexShrink: 0,
+                        border: '1px solid #bae6fd',
+                        overflow: 'hidden'
+                      }}>
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#0369a1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                          <polyline points="9 22 9 12 15 12 15 22" />
+                        </svg>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                          <span style={{ fontSize: '15px', fontWeight: 600, color: '#2e333d' }}>House stuff</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                            <span style={{ fontSize: '11px', color: '#ff652f' }}>you owe</span>
+                            <span style={{ fontSize: '14px', fontWeight: 600, color: '#ff652f' }}>$35.36</span>
+                          </div>
+                        </div>
+                        
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '4px' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '38px', flexShrink: 0 }}>
+                              <div style={{ width: '1.5px', height: '14px', backgroundColor: '#cbd5e1', marginTop: '-4px', position: 'relative' }}>
+                                <div style={{ position: 'absolute', left: 0, bottom: 0, width: '8px', height: '1.5px', backgroundColor: '#cbd5e1' }} />
+                              </div>
+                            </div>
+                            <span style={{ fontSize: '13px', color: '#718096', marginLeft: '-24px', marginTop: '6px' }}>You owe Brooklyn S. <span style={{ color: '#ff652f' }}>$105.36</span></span>
+                          </div>
+                          
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', width: '38px', flexShrink: 0 }}>
+                              <div style={{ width: '1.5px', height: '8px', backgroundColor: '#cbd5e1', marginTop: '-12px' }} />
+                              <div style={{ display: 'flex', width: '100%' }}>
+                                <div style={{ width: '50%', height: '8px', borderLeft: '1.5px solid #cbd5e1', borderBottom: '1.5px solid #cbd5e1', borderBottomLeftRadius: '4px' }} />
+                                <div style={{ width: '50%' }} />
+                              </div>
+                            </div>
+                            <span style={{ fontSize: '13px', color: '#718096', marginLeft: '-24px', marginTop: '6px' }}>Earl E. owes you <span style={{ color: '#108573' }}>$70.00</span></span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Beach scene SVG */}
+              <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', marginTop: 'auto' }}>
+                <svg viewBox="0 0 400 240" width="100%" height="200" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ maxHeight: '20vh' }}>
+                  <path d="M 0 140 L 0 0 L 400 0 L 400 140 Z" fill="url(#skyGrad)" />
+                  <circle cx="200" cy="140" r="40" fill="#ff5a36" />
+                  
+                  <path d="M200 140 L140 0 L160 0 Z" fill="#ffe1d6" opacity="0.3" />
+                  <path d="M200 140 L185 0 L215 0 Z" fill="#ffe1d6" opacity="0.3" />
+                  <path d="M200 140 L240 0 L260 0 Z" fill="#ffe1d6" opacity="0.3" />
+                  
+                  <path d="M50 30 Q53 26 56 30 Q59 26 62 30" stroke="#ff7a5c" strokeWidth="1.2" strokeLinecap="round" />
+                  <path d="M90 45 Q92 42 94 45 Q96 42 98 45" stroke="#ff7a5c" strokeWidth="1.2" strokeLinecap="round" />
+                  <path d="M320 40 Q322 37 324 40 Q326 37 328 40" stroke="#ff7a5c" strokeWidth="1.2" strokeLinecap="round" />
+                  
+                  <rect x="0" y="140" width="400" height="100" fill="url(#waterGrad)" />
+                  <ellipse cx="200" cy="144" rx="90" ry="3" fill="#ff7a5c" opacity="0.5" />
+                  <ellipse cx="180" cy="152" rx="60" ry="2" fill="#ffffff" opacity="0.4" />
+                  
+                  <path d="M190 140 L170 240 L230 240 L210 140 Z" fill="#ffffff" />
+                  <path d="M190 140 L188 240 M210 140 L212 240" stroke="#e2f0ed" strokeWidth="1.5" />
+                  <line x1="189" y1="148" x2="211" y2="148" stroke="#e2f0ed" strokeWidth="1" />
+                  <line x1="187" y1="160" x2="213" y2="160" stroke="#e2f0ed" strokeWidth="1" />
+                  <line x1="184" y1="178" x2="216" y2="178" stroke="#e2f0ed" strokeWidth="1.5" />
+                  <line x1="180" y1="202" x2="220" y2="202" stroke="#e2f0ed" strokeWidth="2" />
+                  <line x1="174" y1="230" x2="226" y2="230" stroke="#e2f0ed" strokeWidth="2.5" />
+                  
+                  <path d="M194 140 L200 128 L206 140 Z" fill="#0d6e5f" />
+                  <rect x="196" y="140" width="8" height="5" fill="#0d6e5f" />
+                  
+                  <circle cx="198" cy="138" r="1.2" fill="#0c564b" />
+                  <line x1="198" y1="139" x2="198" y2="142" stroke="#0c564b" strokeWidth="0.8" />
+                  <circle cx="201" cy="137" r="1.2" fill="#0c564b" />
+                  <line x1="201" y1="138" x2="201" y2="141" stroke="#0c564b" strokeWidth="0.8" />
+                  <circle cx="204" cy="138" r="1.2" fill="#0c564b" />
+                  <line x1="204" y1="139" x2="204" y2="142" stroke="#0c564b" strokeWidth="0.8" />
+
+                  <path d="M265 160 Q275 140 290 144 Q282 152 272 164" fill="#1cc29f" />
+                  <path d="M283 143 L287 138 L285 143 Z" fill="#1cc29f" />
+                  <path d="M288 144 L293 142 L291 146 Z" fill="#1cc29f" />
+                  <ellipse cx="267" cy="161" rx="5" ry="1.2" fill="#e5f6f3" transform="rotate(-30 267 161)" opacity="0.5" />
+
+                  <path d="M55 220 L70 145" stroke="#48245a" strokeWidth="2.5" strokeLinecap="round" />
+                  <path d="M20 162 C28 145, 92 145, 100 162 C92 166, 80 166, 68 162 C56 166, 44 166, 32 162 C25 164, 22 164, 20 162 Z" fill="#a855f7" />
+                  <path d="M20 162 C28 145, 92 145, 100 162 Z" fill="#c084fc" opacity="0.3" />
+                  <path d="M62 145 L62 142" stroke="#48245a" strokeWidth="1.5" />
+                  
+                  <g transform="translate(295, 150)">
+                    <path d="M0 80 C-10 55, -10 15, 10 0 C30 15, 30 55, 20 80 Z" fill="#c084fc" />
+                    <path d="M6 0 C16 15, 16 55, 10 80 Z" fill="#e9d5ff" opacity="0.4" />
+                  </g>
+
+                  <circle cx="280" cy="225" r="11" fill="#1cc29f" />
+                  <path d="M269 225 Q280 217 291 225" stroke="#ffffff" strokeWidth="1.5" />
+                  <path d="M280 214 Q272 225 280 236" stroke="#ffffff" strokeWidth="1.5" />
+
+                  <g transform="translate(340, 215)">
+                    <rect x="0" y="0" width="8" height="18" rx="4" fill="#5ad0b6" transform="rotate(-5)" />
+                    <path d="M1 8 L4 3 L7 8" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" />
+                    <rect x="11" y="0" width="8" height="18" rx="4" fill="#5ad0b6" transform="rotate(5)" />
+                    <path d="M12 8 L15 3 L18 8" stroke="#ffffff" strokeWidth="1.2" strokeLinecap="round" />
+                  </g>
+
+                  <g transform="translate(15, 225)">
+                    <rect x="0" y="0" width="8" height="12" rx="1" fill="#108573" />
+                    <ellipse cx="4" cy="0" rx="4" ry="1.2" fill="#cbd5e1" />
+                    <rect x="9" y="0" width="8" height="12" rx="1" fill="#108573" />
+                    <ellipse cx="13" cy="0" rx="4" ry="1.2" fill="#cbd5e1" />
+                    <rect x="18" y="0" width="8" height="12" rx="1" fill="#108573" />
+                    <ellipse cx="22" cy="0" rx="4" ry="1.2" fill="#cbd5e1" />
+                    <rect x="4" y="4" width="8" height="12" rx="1" fill="#108573" stroke="#ffd9cb" strokeWidth="0.4" />
+                    <ellipse cx="8" cy="4" rx="4" ry="1.2" fill="#cbd5e1" />
+                    <rect x="13" y="4" width="8" height="12" rx="1" fill="#108573" stroke="#ffd9cb" strokeWidth="0.4" />
+                    <ellipse cx="17" cy="4" rx="4" ry="1.2" fill="#cbd5e1" />
+                  </g>
+
+                  <defs>
+                    <linearGradient id="skyGrad" x1="0" y1="0" x2="0" y2="140">
+                      <stop offset="0%" stopColor="#ffd9cb" />
+                      <stop offset="100%" stopColor="#ffe6de" />
+                    </linearGradient>
+                    <linearGradient id="waterGrad" x1="0" y1="140" x2="0" y2="240">
+                      <stop offset="0%" stopColor="#ffffff" />
+                      <stop offset="100%" stopColor="#e5f6f3" />
+                    </linearGradient>
+                  </defs>
+                </svg>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 2: ADD EXPENSES SCREEN */}
+          {tutorialStep === 2 && (
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }} className="animate-fade-in">
+              <div style={{ textAlign: 'left' }}>
+                <h1 style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '36px',
+                  fontWeight: 700,
+                  color: '#2e333d',
+                  lineHeight: '1.15',
+                  letterSpacing: '-0.5px',
+                  marginTop: '10px'
+                }}>
+                  Add expenses
+                </h1>
+                <p style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '18px',
+                  color: '#4e5664',
+                  marginTop: '12px',
+                  lineHeight: '1.3'
+                }}>
+                  You can split expenses with<br />groups or with individuals.
+                </p>
+
+                {/* Groceries card */}
+                <div style={{
+                  backgroundColor: 'white',
+                  borderRadius: '24px',
+                  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.06)',
+                  padding: '24px',
+                  marginTop: '36px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '16px',
+                  textAlign: 'left'
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px', borderBottom: '1px solid #cbd5e1', paddingBottom: '12px' }}>
+                    <div style={{ backgroundColor: '#e2f4f1', width: '42px', height: '42px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#108573" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="9" cy="21" r="1" />
+                        <circle cx="20" cy="21" r="1" />
+                        <path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6" />
+                      </svg>
+                    </div>
+                    <span style={{ fontSize: '18px', fontWeight: 600, color: '#2e333d' }}>Groceries</span>
+                  </div>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                    <div style={{ border: '1px solid #cbd5e1', width: '42px', height: '42px', borderRadius: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <span style={{ fontSize: '24px', fontWeight: 'bold', color: '#64748b' }}>$</span>
+                    </div>
+                    <div style={{ flex: 1, borderBottom: '2.5px solid #108573', paddingBottom: '4px' }}>
+                      <span style={{ fontSize: '28px', fontWeight: 600, color: '#2e333d', letterSpacing: '0.5px' }}>94.50</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* House/Grocery SVG */}
+              <div style={{ width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', marginTop: 'auto' }}>
+                <svg viewBox="0 0 400 220" width="100%" height="180" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ maxHeight: '20vh' }}>
+                  <rect width="400" height="220" fill="#e5f6f3" />
+                  
+                  <path d="M-50 220 Q150 140 450 220 Z" fill="#9cdbc8" />
+                  <path d="M-50 220 Q250 170 450 220 Z" fill="#cbece2" opacity="0.6" />
+
+                  <g transform="translate(180, 90)">
+                    <rect x="0" y="25" width="80" height="55" fill="#ffd0b7" />
+                    <path d="M-10 25 L40 -15 L90 25 Z" fill="#f87171" />
+                    <rect x="15" y="45" width="18" height="35" rx="2" fill="#991b1b" />
+                    <rect x="45" y="35" width="20" height="20" rx="2" fill="#fef08a" />
+                    <line x1="55" y1="35" x2="55" y2="55" stroke="#f87171" strokeWidth="1" />
+                    <line x1="45" y1="45" x2="65" y2="45" stroke="#f87171" strokeWidth="1" />
+                    
+                    <path d="M5 25 Q3 17 0 17 L2 25 Z M7 25 Q9 17 12 17 L10 25 Z" fill="#1e293b" />
+                    <ellipse cx="6" cy="25" rx="5" ry="4" fill="#1e293b" />
+                    <path d="M2 28 Q-3 30 -5 25" stroke="#1e293b" strokeWidth="1.2" strokeLinecap="round" />
+                  </g>
+
+                  <g transform="translate(320, 90)">
+                    <path d="M20 70 L0 45 L10 45 L-5 20 L5 20 L-10 0 L15 -20 L40 0 L25 20 L35 20 L20 45 L30 45 Z" fill="#0d6e5f" />
+                    <rect x="15" y="70" width="10" height="15" fill="#78350f" />
+                  </g>
+                  
+                  <path d="M260 105 Q290 125 320 110" stroke="#fef08a" strokeWidth="1.2" fill="none" strokeDasharray="1 4" strokeLinecap="round" />
+                  <circle cx="270" cy="110" r="2" fill="#fef08a" />
+                  <circle cx="282" cy="115" r="2" fill="#fef08a" />
+                  <circle cx="295" cy="117" r="2" fill="#fef08a" />
+                  <circle cx="308" cy="115" r="2" fill="#fef08a" />
+
+                  <path d="M200 220 Q180 180 195 160 T200 135" stroke="#e5f6f3" strokeWidth="14" fill="none" strokeLinecap="round" />
+
+                  <g transform="translate(185, 130)">
+                    <circle cx="10" cy="0" r="2.5" fill="#0f172a" />
+                    <path d="M7 3.5 Q10 3.5 13 3.5 L13 14 L11 14 L11 22 L9 22 L9 14 L7 14 Z" fill="#0f172a" />
+                    <rect x="12" y="8" width="4" height="6" fill="#b45309" />
+                    <path d="M13 8 Q14 5 15 8" stroke="#0f172a" strokeWidth="0.8" fill="none" />
+
+                    <circle cx="22" cy="4" r="2" fill="#0f172a" />
+                    <path d="M19 7 Q22 7 25 7 L24 16 L22 16 L22 22 L20 22 L20 16 L18 16 Z" fill="#0f172a" />
+                    <rect x="16" y="11" width="3" height="5" fill="#b45309" />
+                    <path d="M17 11 Q17.5 8 18 11" stroke="#0f172a" strokeWidth="0.8" fill="none" />
+                  </g>
+
+                  <g transform="translate(-10, 90)">
+                    <path d="M0 130 C20 130, 40 120, 50 100 C60 80, 60 45, 30 35 C10 32, -10 35, -25 35 Z" fill="#0d6e5f" />
+                    <circle cx="35" cy="130" r="18" fill="#1e293b" />
+                    <circle cx="35" cy="130" r="8" fill="#cbd5e1" />
+                    <path d="M45 45 C70 45, 100 70, 100 110" stroke="#108573" strokeWidth="3" fill="none" strokeLinecap="round" />
+                    <path d="M56 85 C56 80, 52 75, 48 75 Z" fill="#ef4444" />
+
+                    <rect x="0" y="80" width="16" height="22" fill="#d97706" rx="1" />
+                    <rect x="3" y="64" width="5" height="18" rx="2" fill="#f59e0b" transform="rotate(-15 3 64)" />
+                    <line x1="2" y1="72" x2="5" y2="69" stroke="#b45309" strokeWidth="0.8" />
+                    <line x1="3" y1="76" x2="6" y2="73" stroke="#b45309" strokeWidth="0.8" />
+                    <path d="M12 75 Q14 67 13 62" stroke="#22c55e" strokeWidth="2" fill="none" strokeLinecap="round" />
+                    <path d="M14 77 Q17 70 19 66" stroke="#22c55e" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+
+                    <rect x="12" y="86" width="18" height="22" fill="#b45309" rx="1" stroke="#0d6e5f" strokeWidth="0.4" />
+                    <path d="M15 80 Q13 70 11 65 M18 80 Q18 72 17 67" stroke="#4ade80" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+                    <circle cx="26" cy="85" r="3.5" fill="#f97316" />
+                    <ellipse cx="21" cy="84" rx="3.5" ry="2.5" fill="#fbbf24" />
+                  </g>
+
+                  <g transform="translate(340, 185)">
+                    <path d="M0 10 Q4 0 8 10 M4 10 Q8 2 12 10 M-4 10 Q0 -2 4 10" stroke="#0d6e5f" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                  </g>
+                </svg>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 3: SETTLE UP SCREEN */}
+          {tutorialStep === 3 && (
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }} className="animate-fade-in">
+              <div style={{ textAlign: 'left' }}>
+                <h1 style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '36px',
+                  fontWeight: 700,
+                  color: '#2e333d',
+                  lineHeight: '1.15',
+                  letterSpacing: '-0.5px',
+                  marginTop: '10px'
+                }}>
+                  Settle up
+                </h1>
+                <p style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '18px',
+                  color: '#4e5664',
+                  marginTop: '12px',
+                  lineHeight: '1.3'
+                }}>
+                  Pay your friends back any time
+                </p>
+              </div>
+
+              {/* Table SVG area with overlay card */}
+              <div style={{ width: '100%', position: 'relative', marginTop: '20px', minHeight: '260px' }}>
+                <svg viewBox="0 0 400 240" width="100%" height="240" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ zIndex: 1 }}>
+                  <rect width="400" height="240" fill="#e8ecf1" />
+
+                  <g opacity="0.12">
+                    <rect x="250" y="30" width="45" height="35" rx="4" fill="#000000" transform="rotate(25 250 30)" />
+                    <rect x="40" y="110" width="35" height="45" rx="4" fill="#000000" transform="rotate(-35 40 110)" />
+                  </g>
+
+                  <circle cx="150" cy="130" r="90" fill="#b0d6eb" />
+                  <circle cx="150" cy="130" r="87" fill="#c3e4f6" />
+
+                  <g transform="translate(230, 50) rotate(35)">
+                    <rect x="0" y="0" width="35" height="6" rx="2" fill="#8cb7cf" />
+                    <line x1="6" y1="6" x2="6" y2="18" stroke="#8cb7cf" strokeWidth="3" />
+                    <line x1="29" y1="6" x2="29" y2="18" stroke="#8cb7cf" strokeWidth="3" />
+                  </g>
+                  <g transform="translate(35, 100) rotate(-55)">
+                    <rect x="0" y="0" width="35" height="6" rx="2" fill="#8cb7cf" />
+                    <line x1="6" y1="6" x2="6" y2="18" stroke="#8cb7cf" strokeWidth="3" />
+                    <line x1="29" y1="6" x2="29" y2="18" stroke="#8cb7cf" strokeWidth="3" />
+                  </g>
+
+                  <circle cx="90" cy="90" r="22" fill="#ffffff" />
+                  <circle cx="90" cy="90" r="18" fill="#f8fafc" />
+                  
+                  <circle cx="205" cy="165" r="22" fill="#ffffff" />
+                  <circle cx="205" cy="165" r="18" fill="#f8fafc" />
+                  
+                  <circle cx="180" cy="95" r="25" fill="#ffffff" />
+                  <circle cx="180" cy="95" r="21" fill="#f1f5f9" />
+
+                  <g transform="translate(180, 95)">
+                    <path d="M 0 0 L 14 -14 A 20 20 0 1 1 -14 -14 Z" fill="#d97706" />
+                    <path d="M 0 0 L 12 -12 A 17 17 0 1 1 -12 -12 Z" fill="#fcd34d" />
+                    <circle cx="5" cy="10" r="2.5" fill="#ef4444" />
+                    <circle cx="-8" cy="6" r="2.5" fill="#ef4444" />
+                    <circle cx="-3" cy="-7" r="2.5" fill="#ef4444" />
+                    <circle cx="8" cy="-5" r="2.5" fill="#ef4444" />
+                    <circle cx="-10" cy="-4" r="2" fill="#ef4444" />
+                  </g>
+
+                  <circle cx="94" cy="88" r="1" fill="#d97706" />
+                  <circle cx="85" cy="94" r="1.5" fill="#ef4444" />
+                  <circle cx="208" cy="160" r="1" fill="#d97706" />
+                  <circle cx="200" cy="168" r="1.2" fill="#d97706" />
+
+                  <circle cx="98" cy="145" r="11" fill="#ffffff" />
+                  <circle cx="98" cy="145" r="8" fill="#ef4444" />
+                  <circle cx="98" cy="145" r="6" fill="#991b1b" />
+                  
+                  <circle cx="142" cy="68" r="11" fill="#ffffff" />
+                  <circle cx="142" cy="68" r="8" fill="#ef4444" />
+                  <circle cx="142" cy="68" r="6" fill="#991b1b" />
+                  
+                  <circle cx="222" cy="120" r="11" fill="#ffffff" />
+                  <circle cx="222" cy="120" r="9" fill="#e2e8f0" />
+                </svg>
+
+                {/* Settle Up Overlay Card */}
+                <div style={{
+                  backgroundColor: 'white',
+                  borderRadius: '20px',
+                  boxShadow: '0 8px 30px rgba(0, 0, 0, 0.08)',
+                  padding: '16px',
+                  width: '210px',
+                  position: 'absolute',
+                  bottom: '10px',
+                  right: '10px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '12px',
+                  textAlign: 'center',
+                  zIndex: 5
+                }} onClick={(e) => e.stopPropagation()}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                    <div style={{ width: '36px', height: '36px', borderRadius: '50%', backgroundColor: '#fbcfe8', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', border: '1px solid #f472b6' }}>
+                      <span style={{ fontSize: '20px' }}>🐘</span>
+                      <span style={{ position: 'absolute', top: '-4px', right: '-4px', fontSize: '10px' }}>🎀</span>
+                    </div>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#64748b" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <line x1="5" y1="12" x2="19" y2="12" />
+                      <polyline points="12 5 19 12 12 19" />
+                    </svg>
+                    <div style={{
+                      width: '36px',
+                      height: '36px',
+                      borderRadius: '50%',
+                      backgroundColor: '#991b1b',
+                      border: '1px solid #7f1d1d',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <span style={{ fontSize: '18px' }}>👤</span>
+                    </div>
+                  </div>
+
+                  <span style={{ fontSize: '13px', color: '#64748b', fontWeight: 500 }}>You paid Brooklyn S.</span>
+
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div style={{ border: '1px solid #cbd5e1', width: '32px', height: '32px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                      <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#64748b' }}>$</span>
+                    </div>
+                    <div style={{ flex: 1, borderBottom: '2px solid #108573', paddingBottom: '2px', textAlign: 'left' }}>
+                      <span style={{ fontSize: '20px', fontWeight: 600, color: '#2e333d' }}>105.36</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* STEP 4: LET'S GET STARTED */}
+          {tutorialStep === 4 && (
+            <div style={{ display: 'flex', flexDirection: 'column', height: '100%', justifyContent: 'space-between' }} className="animate-fade-in">
+              <div style={{ textAlign: 'left', marginTop: '20px' }}>
+                {/* Party Popper SVG */}
+                <div style={{ display: 'flex', justifyContent: 'flex-start', marginBottom: '24px' }}>
+                  <svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 52 L28 44 L20 28 Z" fill="#108573" />
+                    <path d="M12 52 L20 48 L16 38 Z" fill="#0d6e5f" />
+                    <path d="M30 38 Q42 30 50 18" stroke="#108573" strokeWidth="2" strokeLinecap="round" strokeDasharray="1 3" />
+                    <path d="M26 30 Q38 18 40 8" stroke="#ff652f" strokeWidth="2" strokeLinecap="round" strokeDasharray="1 3" />
+                    <path d="M34 44 Q50 42 54 30" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" strokeDasharray="1 3" />
+                    <circle cx="48" cy="12" r="3" fill="#ff652f" />
+                    <circle cx="38" cy="24" r="2.5" fill="#f59e0b" />
+                    <circle cx="56" cy="28" r="3" fill="#108573" />
+                    <circle cx="42" cy="6" r="2" fill="#3b82f6" />
+                    <path d="M46 20 Q48 16 52 18" stroke="#3b82f6" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                    <path d="M32 15 Q34 10 38 12" stroke="#108573" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                  </svg>
+                </div>
+
+                <h1 style={{
+                  fontFamily: 'var(--font-display)',
+                  fontSize: '36px',
+                  fontWeight: 700,
+                  color: '#2e333d',
+                  lineHeight: '1.15',
+                  letterSpacing: '-0.5px'
+                }}>
+                  Let's get started
+                </h1>
+                <p style={{
+                  fontFamily: 'var(--font-body)',
+                  fontSize: '18px',
+                  color: '#4e5664',
+                  marginTop: '12px',
+                  lineHeight: '1.3'
+                }}>
+                  What would you like to do first?
+                </p>
+              </div>
+
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginBottom: '20px' }}>
+                <button 
+                  onClick={() => {
+                    setGroupName('Group Trip');
+                    setShowAddGroup(true);
+                    setPage('dashboard');
+                  }}
+                  className="btn-primary" 
+                  style={{
+                    backgroundColor: '#108573',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    padding: '16px'
+                  }}
+                >
+                  <span>✈️</span> Add a group trip
+                </button>
+
+                <button 
+                  onClick={() => {
+                    setGroupName('Household');
+                    setShowAddGroup(true);
+                    setPage('dashboard');
+                  }}
+                  className="btn-primary" 
+                  style={{
+                    backgroundColor: '#108573',
+                    color: 'white',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '10px',
+                    borderRadius: '8px',
+                    fontSize: '16px',
+                    padding: '16px'
+                  }}
+                >
+                  <span>🏠</span> Add your household
+                </button>
+
+                <span 
+                  onClick={() => setPage('dashboard')}
+                  style={{
+                    color: '#108573',
+                    fontSize: '16px',
+                    fontWeight: 600,
+                    textAlign: 'center',
+                    display: 'block',
+                    marginTop: '10px',
+                    cursor: 'pointer',
+                    textDecoration: 'none'
+                  }}
+                >
+                  Skip setup for now
+                </span>
+              </div>
+            </div>
+          )}
+
+          {/* Navigation Dots (only steps 1-3) */}
+          {tutorialStep < 4 && (
+            <div style={{ display: 'flex', justifyContent: 'center', gap: '8px', marginTop: '20px', zIndex: 10 }}>
+              <div 
+                onClick={(e) => { e.stopPropagation(); setTutorialStep(1); }} 
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: tutorialStep === 1 ? '#1cc29f' : '#bce8e1',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.3s ease'
+                }} 
+              />
+              <div 
+                onClick={(e) => { e.stopPropagation(); setTutorialStep(2); }} 
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: tutorialStep === 2 ? '#1cc29f' : '#bce8e1',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.3s ease'
+                }} 
+              />
+              <div 
+                onClick={(e) => { e.stopPropagation(); setTutorialStep(3); }} 
+                style={{
+                  width: '8px',
+                  height: '8px',
+                  borderRadius: '50%',
+                  backgroundColor: tutorialStep === 3 ? '#1cc29f' : '#bce8e1',
+                  cursor: 'pointer',
+                  transition: 'background-color 0.3s ease'
+                }} 
+              />
+            </div>
+          )}
         </div>
       )}
 

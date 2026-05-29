@@ -261,8 +261,10 @@ app.post('/api/auth/google', async (req, res) => {
       return res.status(400).json({ error: "Email not provided by Google account" });
     }
 
+    let isNewUser = false;
     let user = await db.getUserByEmail(email);
     if (!user) {
+      isNewUser = true;
       // Auto-register new Google user with a secure random password
       const crypto = require('crypto');
       const randomPassword = crypto.randomBytes(16).toString('hex');
@@ -276,7 +278,8 @@ app.post('/api/auth/google', async (req, res) => {
       });
     }
 
-    res.json(user);
+    const userObj = typeof user.toObject === 'function' ? user.toObject() : user;
+    res.json({ ...userObj, isNewUser });
   } catch (err) {
     console.error("Google Auth Error:", err);
     res.status(400).json({ error: "Google authentication failed" });
@@ -304,7 +307,8 @@ app.post('/api/auth/signup', async (req, res) => {
       password: hashedPassword,
       avatarUrl: `https://api.dicebear.com/7.x/adventurer/svg?seed=${name}`
     });
-    res.status(201).json(user);
+    const userObj = typeof user.toObject === 'function' ? user.toObject() : user;
+    res.status(201).json({ ...userObj, isNewUser: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
