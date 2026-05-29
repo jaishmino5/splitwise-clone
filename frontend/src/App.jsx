@@ -1529,14 +1529,9 @@ export default function App() {
               Terms Of Use
             </h3>
 
-            <ul style={{ paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
-              <li>
-                You agree to the terms of service of any payment service linked to by Splitwise.
-              </li>
-              <li>
-                <strong>SMS:</strong> Splitwise offers the option to our customers to receive one-time passwords and account notifications via SMS to a cell phone. SMS message frequency varies. Message and data rates may apply. To stop receiving messages, you may remove your phone number from your account settings, or contact support at support@splitwise.com for assistance. You can also text STOP to stop or HELP for help. Phone carriers are not liable for any delays or undelivered messages.
-              </li>
-            </ul>
+            <p style={{ fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
+              <strong>Who can use Splitwise:</strong> You may use our services only if you agree to these Terms of Service and to the processing of you
+            </p>
           </div>
         </div>
       )}
