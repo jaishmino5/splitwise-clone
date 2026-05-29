@@ -178,6 +178,24 @@ const db = {
     }
   },
 
+  async updateUser(userId, userData) {
+    if (useMongoDB) {
+      return await UserModel.findByIdAndUpdate(userId, userData, { new: true });
+    } else {
+      const data = loadJsonDb();
+      const index = data.users.findIndex(u => u._id === userId.toString());
+      if (index !== -1) {
+        data.users[index] = {
+          ...data.users[index],
+          ...userData
+        };
+        saveJsonDb(data);
+        return data.users[index];
+      }
+      return null;
+    }
+  },
+
   // Groups
   async getGroups() {
     if (useMongoDB) {

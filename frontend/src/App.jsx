@@ -75,6 +75,13 @@ export default function App() {
   const [friendName, setFriendName] = useState('');
   const [friendEmail, setFriendEmail] = useState('');
 
+  // Edit Profile Form Inputs & Modals State
+  const [showEditProfile, setShowEditProfile] = useState(false);
+  const [showProCheckout, setShowProCheckout] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editAvatarUrl, setEditAvatarUrl] = useState('');
+
   // Fetch initial users list
   const fetchUsers = async () => {
     try {
@@ -370,6 +377,33 @@ export default function App() {
       // Create a default group first
       alert("Please add a group first before splitting expenses.");
       setShowAddGroup(true);
+    }
+  };
+
+  const handleUpdateProfile = async (e) => {
+    e.preventDefault();
+    if (!editName) return;
+    try {
+      const res = await fetch(`${API_BASE}/users/${user._id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editName,
+          email: editEmail,
+          avatarUrl: editAvatarUrl
+        })
+      });
+      if (res.ok) {
+        const updatedUser = await res.json();
+        setUser(updatedUser);
+        setShowEditProfile(false);
+        await fetchDashboardData();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to update profile");
+      }
+    } catch (err) {
+      console.error("Error updating profile:", err);
     }
   };
 
@@ -1862,40 +1896,295 @@ export default function App() {
           )}
 
           {activeTab === 'account' && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, padding: '20px 0' }} className="animate-fade-in">
-              {/* Profile Card */}
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', margin: '20px 0 40px 0' }}>
-                <img 
-                  src={user.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${user.name}`} 
-                  alt="Avatar" 
-                  style={{ width: '96px', height: '96px', borderRadius: '50%', border: '3px solid #1cc29f', backgroundColor: '#131415' }}
-                />
-                <h3 style={{ fontSize: '22px', fontWeight: 700, color: 'white', margin: 0 }}>{user.name}</h3>
-                <span style={{ fontSize: '14px', color: '#94a3b8' }}>{user.email}</span>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '10px 0 20px 0' }} className="animate-fade-in">
+              {/* Account Header with Title and Search */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', padding: '0 20px' }}>
+                <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 700, color: 'white', margin: 0 }}>
+                  Account
+                </h1>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }}>
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
               </div>
 
-              {/* Action Buttons */}
-              <button 
-                onClick={handleLogout}
-                className="btn-primary" 
-                style={{
-                  backgroundColor: '#ff652f',
-                  color: 'white',
-                  borderRadius: '10px',
+              {/* User Profile Card */}
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', padding: '0 20px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                  {/* Circle Avatar with Peach/Orange Split Backdrop & Camera Overlay */}
+                  <div style={{ position: 'relative' }}>
+                    <div style={{
+                      width: '64px',
+                      height: '64px',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #f97316 0%, #ffe1d5 100%)',
+                      border: '1.5px solid rgba(255,255,255,0.1)',
+                      overflow: 'hidden',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <img 
+                        src={user.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${user.name}`} 
+                        alt="Avatar" 
+                        style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                      />
+                    </div>
+                    {/* Camera Badge Overlay */}
+                    <div style={{
+                      position: 'absolute',
+                      bottom: '-2px',
+                      right: '-2px',
+                      backgroundColor: '#374151',
+                      border: '1.5px solid #18191b',
+                      borderRadius: '50%',
+                      width: '20px',
+                      height: '20px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 5px rgba(0,0,0,0.3)'
+                    }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                        <circle cx="12" cy="13" r="4" />
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* Profile info */}
+                  <div>
+                    <h3 style={{ fontSize: '18px', fontWeight: 700, color: 'white', margin: '0 0 2px 0' }}>
+                      {user.name}
+                    </h3>
+                    <span style={{ fontSize: '13px', color: '#94a3b8' }}>
+                      {user.email}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Edit Link */}
+                <span 
+                  onClick={() => {
+                    setEditName(user.name || '');
+                    setEditEmail(user.email || '');
+                    setEditAvatarUrl(user.avatarUrl || '');
+                    setShowEditProfile(true);
+                  }}
+                  style={{ fontSize: '14px', fontWeight: 600, color: '#1cc29f', cursor: 'pointer' }}
+                >
+                  Edit
+                </span>
+              </div>
+
+              {/* Splitwise Pro Purple Banner */}
+              <div style={{ padding: '0 20px', marginBottom: '24px' }}>
+                <div style={{
+                  background: 'linear-gradient(135deg, #5b21b6 0%, #3b0764 100%)',
+                  borderRadius: '16px',
+                  padding: '24px 20px',
+                  position: 'relative',
+                  overflow: 'hidden',
+                  boxShadow: '0 10px 25px rgba(59, 7, 100, 0.25)',
+                  textAlign: 'center',
                   display: 'flex',
+                  flexDirection: 'column',
                   alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  padding: '14px',
-                  width: '100%',
-                  maxWidth: '280px',
-                  fontSize: '16px',
-                  boxShadow: '0 4px 15px rgba(255, 101, 47, 0.2)'
-                }}
-              >
-                <LogOut size={18} />
-                Log out
-              </button>
+                  gap: '12px'
+                }}>
+                  {/* Pro Diamond Icon */}
+                  <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" style={{ filter: 'drop-shadow(0 2px 8px rgba(255,255,255,0.4))' }}>
+                    <path d="M6 3h12l4 6-10 13L2 9z" />
+                    <path d="M11 3 8 9l4 13 4-13-3-6" />
+                    <path d="M2 9h20" />
+                  </svg>
+                  
+                  <span style={{ fontSize: '15px', color: '#f3e8ff', fontWeight: 500 }}>
+                    Do more with <strong style={{ color: 'white' }}>Splitwise Pro</strong>.
+                  </span>
+
+                  <button 
+                    onClick={() => setShowProCheckout(true)}
+                    style={{
+                      backgroundColor: '#7c3aed',
+                      border: 'none',
+                      color: 'white',
+                      borderRadius: '24px',
+                      padding: '12px 28px',
+                      fontSize: '14px',
+                      fontWeight: 700,
+                      cursor: 'pointer',
+                      boxShadow: '0 4px 15px rgba(124, 58, 237, 0.4)',
+                      transition: 'transform 0.2s ease',
+                      outline: 'none',
+                      marginTop: '6px'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.03)'}
+                    onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                  >
+                    Get Splitwise Pro
+                  </button>
+                </div>
+              </div>
+
+              {/* Main Lists Area */}
+              <div style={{ display: 'flex', flexDirection: 'column', padding: '0 20px', gap: '8px' }}>
+                {/* Scan code */}
+                <div style={{ display: 'flex', alignItems: 'center', padding: '14px 0', borderBottom: '1px solid #22252a', cursor: 'pointer' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '16px' }}>
+                    <rect x="3" y="3" width="7" height="7" />
+                    <rect x="14" y="3" width="7" height="7" />
+                    <rect x="14" y="14" width="7" height="7" />
+                    <rect x="3" y="14" width="7" height="7" />
+                  </svg>
+                  <span style={{ fontSize: '16px', color: '#cbd5e1', fontWeight: 500 }}>Scan code</span>
+                </div>
+
+                {/* Splitwise Pro list item */}
+                <div style={{ display: 'flex', alignItems: 'center', padding: '14px 0', borderBottom: '1px solid #22252a', cursor: 'pointer' }} onClick={() => setShowProCheckout(true)}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '16px' }}>
+                    <path d="M6 3h12l4 6-10 13L2 9z" />
+                    <path d="M11 3 8 9l4 13 4-13-3-6" />
+                    <path d="M2 9h20" />
+                  </svg>
+                  <span style={{ fontSize: '16px', color: '#cbd5e1', fontWeight: 500 }}>Splitwise Pro</span>
+                </div>
+
+                {/* PREFERENCES SECTION */}
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#718096', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '20px', marginBottom: '8px' }}>
+                  Preferences
+                </span>
+
+                <div style={{ display: 'flex', alignItems: 'center', padding: '14px 0', borderBottom: '1px solid #22252a', cursor: 'pointer' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '16px' }}>
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                    <polyline points="22,6 12,13 2,6" />
+                  </svg>
+                  <span style={{ fontSize: '16px', color: '#cbd5e1', fontWeight: 500 }}>Email settings</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', padding: '14px 0', borderBottom: '1px solid #22252a', cursor: 'pointer' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '16px' }}>
+                    <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                    <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+                  </svg>
+                  <span style={{ fontSize: '16px', color: '#cbd5e1', fontWeight: 500 }}>Device and push notification settings</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', padding: '14px 0', borderBottom: '1px solid #22252a', cursor: 'pointer' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '16px' }}>
+                    <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                    <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                  </svg>
+                  <span style={{ fontSize: '16px', color: '#cbd5e1', fontWeight: 500 }}>Security</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', padding: '14px 0', borderBottom: '1px solid #22252a', cursor: 'pointer' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '16px' }}>
+                    <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 14.7255 3.09032 17.1962 4.85857 19C5.34776 19.5 5.166 20.5 4.5 21C4 21.3 3.5 21.5 3 21.5C2 21.5 1 20 1 18.5C1 12 6 6 12 6C16.5 6 20 9.5 20 13.5C20 16 18 18 15.5 18C14.5 18 13.5 17.5 13 17C12.5 16.5 11.5 16.5 11 17C10.5 17.5 10.5 18.5 11 19C11.5 19.5 12 20.5 12 22Z" />
+                    <circle cx="7.5" cy="10.5" r="1.5" fill="#cbd5e1" />
+                    <circle cx="11.5" cy="7.5" r="1.5" fill="#cbd5e1" />
+                    <circle cx="16.5" cy="9.5" r="1.5" fill="#cbd5e1" />
+                  </svg>
+                  <span style={{ fontSize: '16px', color: '#cbd5e1', fontWeight: 500 }}>Appearance</span>
+                </div>
+
+                {/* FEEDBACK SECTION */}
+                <span style={{ fontSize: '12px', fontWeight: 700, color: '#718096', textTransform: 'uppercase', letterSpacing: '0.5px', marginTop: '20px', marginBottom: '8px' }}>
+                  Feedback
+                </span>
+
+                <div style={{ display: 'flex', alignItems: 'center', padding: '14px 0', borderBottom: '1px solid #22252a', cursor: 'pointer' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '16px' }}>
+                    <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" />
+                  </svg>
+                  <span style={{ fontSize: '16px', color: '#cbd5e1', fontWeight: 500 }}>Rate Splitwise</span>
+                </div>
+
+                <div style={{ display: 'flex', alignItems: 'center', padding: '14px 0', borderBottom: '1px solid #22252a', cursor: 'pointer' }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '16px' }}>
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                    <circle cx="12" cy="12" r="1" fill="#cbd5e1" />
+                  </svg>
+                  <span style={{ fontSize: '16px', color: '#cbd5e1', fontWeight: 500 }}>Contact Splitwise support</span>
+                </div>
+
+                {/* Divider Line */}
+                <hr style={{ border: 'none', borderTop: '1.5px solid #22252a', margin: '24px 0 12px 0' }} />
+
+                {/* Log out option */}
+                <div 
+                  onClick={handleLogout}
+                  style={{ display: 'flex', alignItems: 'center', padding: '14px 0', cursor: 'pointer' }}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: '16px' }}>
+                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
+                    <polyline points="16 17 21 12 16 7" />
+                    <line x1="21" y1="12" x2="9" y2="12" />
+                  </svg>
+                  <span style={{ fontSize: '16px', color: '#1cc29f', fontWeight: 600 }}>Log out</span>
+                </div>
+
+                {/* Centered Footer Info */}
+                <div style={{ textAlign: 'center', marginTop: '30px', color: '#718096', fontSize: '13px', display: 'flex', flexDirection: 'column', gap: '6px', fontFamily: 'var(--font-body)' }}>
+                  <span>Made with ✨ in Providence, RI, USA</span>
+                  <span>Copyright © 2026 Splitwise, Inc.</span>
+                  <span>P.S. Bunnies!</span>
+                  
+                  <span 
+                    onClick={() => {
+                      setPage('privacy');
+                      setTermsBackPage('dashboard');
+                    }}
+                    style={{ color: '#1cc29f', cursor: 'pointer', textDecoration: 'underline', fontWeight: 500 }}
+                  >
+                    Privacy Policy
+                  </span>
+                  
+                  <span style={{ fontSize: '11px', marginTop: '2px' }}>v26.5.3/933</span>
+                </div>
+
+                {/* Geometric Polygon Mountains & Cute Peak-a-boo Bunny Footer */}
+                <div style={{ width: 'calc(100% + 40px)', margin: '40px -20px -80px -20px', position: 'relative', overflow: 'hidden' }}>
+                  <svg viewBox="0 0 400 120" width="100%" height="80" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ display: 'block' }}>
+                    {/* Cute White Bunny Peaking Up */}
+                    <g transform="translate(320, 38)">
+                      {/* Ears */}
+                      <ellipse cx="6" cy="12" rx="3.5" ry="12" fill="#ffffff" transform="rotate(-15 6 12)" />
+                      <ellipse cx="6" cy="12" rx="1.5" ry="8" fill="#ffd1d1" transform="rotate(-15 6 12)" />
+                      <ellipse cx="18" cy="12" rx="3.5" ry="12" fill="#ffffff" transform="rotate(15 18 12)" />
+                      <ellipse cx="18" cy="12" rx="1.5" ry="8" fill="#ffd1d1" transform="rotate(15 18 12)" />
+                      {/* Head */}
+                      <circle cx="12" cy="24" r="10" fill="#ffffff" />
+                      {/* Eyes */}
+                      <circle cx="8" cy="22" r="1.2" fill="#3c434a" />
+                      <circle cx="16" cy="22" r="1.2" fill="#3c434a" />
+                      {/* Nose */}
+                      <polygon points="12,25 10.5,24 13.5,24" fill="#ffd1d1" />
+                      {/* Cheeks */}
+                      <ellipse cx="6.5" cy="25" rx="2" ry="1.2" fill="#ffd1d1" opacity="0.6" />
+                      <ellipse cx="17.5" cy="25" rx="2" ry="1.2" fill="#ffd1d1" opacity="0.6" />
+                    </g>
+                    
+                    {/* Geometric Polygon Mountains */}
+                    {/* Mountain 1: Teal */}
+                    <polygon points="-20,120 40,65 100,120" fill="#0d9488" />
+                    {/* Mountain 2: Purple */}
+                    <polygon points="60,120 130,50 200,120" fill="#7c3aed" />
+                    {/* Mountain 3: Dark Grey */}
+                    <polygon points="150,120 220,75 290,120" fill="#374151" />
+                    {/* Mountain 4: Soft Peach */}
+                    <polygon points="240,120 310,60 380,120" fill="#f97316" />
+                    {/* Mountain 5: Light Green */}
+                    <polygon points="310,120 370,70 430,120" fill="#10b981" />
+                    
+                    {/* Overlay overlapping mountains for beautiful complexity */}
+                    <polygon points="15,120 80,72 145,120" fill="#14b8a6" opacity="0.8" />
+                    <polygon points="105,120 170,62 235,120" fill="#8b5cf6" opacity="0.8" />
+                    <polygon points="265,120 330,68 395,120" fill="#fb923c" opacity="0.8" />
+                  </svg>
+                </div>
+              </div>
             </div>
           )}
 
@@ -2530,6 +2819,179 @@ export default function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* E. EDIT PROFILE MODAL */}
+      {showEditProfile && (
+        <div style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 100,
+          padding: '20px'
+        }}>
+          <div className="glass-card animate-fade-in" style={{
+            width: '100%',
+            backgroundColor: 'white',
+            padding: '24px',
+            borderRadius: '20px',
+            boxShadow: 'var(--shadow-lg)',
+            maxHeight: '90%',
+            overflowY: 'auto'
+          }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 800, marginBottom: '20px', color: '#1e293b' }}>
+              Edit profile
+            </h3>
+
+            <form onSubmit={handleUpdateProfile} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="input-group">
+                <label className="input-label">Full Name</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="Your name"
+                  value={editName} 
+                  onChange={(e) => setEditName(e.target.value)} 
+                  required 
+                />
+              </div>
+
+              <div className="input-group">
+                <label className="input-label">Email address</label>
+                <input 
+                  type="email" 
+                  className="input-field" 
+                  placeholder="your@email.com"
+                  value={editEmail} 
+                  onChange={(e) => setEditEmail(e.target.value)} 
+                  required
+                />
+              </div>
+
+              <div className="input-group">
+                <label className="input-label">Avatar URL (Optional)</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="https://example.com/avatar.png"
+                  value={editAvatarUrl} 
+                  onChange={(e) => setEditAvatarUrl(e.target.value)} 
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowEditProfile(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>
+                  Save
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* F. SPLITWISE PRO CHECKOUT MODAL */}
+      {showProCheckout && (
+        <div style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.75)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 100,
+          padding: '20px'
+        }}>
+          <div className="animate-fade-in" style={{
+            width: '100%',
+            maxWidth: '360px',
+            background: 'linear-gradient(135deg, #1e1b4b 0%, #311042 100%)',
+            padding: '32px 24px',
+            borderRadius: '24px',
+            boxShadow: '0 20px 50px rgba(0,0,0,0.5)',
+            textAlign: 'center',
+            color: 'white',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '16px'
+          }}>
+            {/* Diamond */}
+            <div style={{
+              width: '72px',
+              height: '72px',
+              borderRadius: '50%',
+              backgroundColor: 'rgba(167, 139, 250, 0.1)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              border: '2px solid rgba(167, 139, 250, 0.3)'
+            }}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#a78bfa" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 3h12l4 6-10 13L2 9z" />
+                <path d="M11 3 8 9l4 13 4-13-3-6" />
+                <path d="M2 9h20" />
+              </svg>
+            </div>
+
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '22px', fontWeight: 800, margin: '8px 0 0 0' }}>
+              Splitwise Pro
+            </h3>
+            
+            <p style={{ fontSize: '14px', color: '#c084fc', margin: 0, fontWeight: 600 }}>
+              Unlock the Ultimate Ledger Experience
+            </p>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', width: '100%', margin: '12px 0', textAlign: 'left', fontSize: '13px', color: '#cbd5e1' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: '#a78bfa' }}>✦</span> Unlimited non-group splitting & contacts
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: '#a78bfa' }}>✦</span> High-fidelity dynamic charts & statistics
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: '#a78bfa' }}>✦</span> Advanced receipt OCR scanning & search
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ color: '#a78bfa' }}>✦</span> Ad-free experience & premium visual themes
+              </div>
+            </div>
+
+            <button 
+              onClick={() => {
+                alert("Thank you! You are now subscribed to Splitwise Pro! (Demo Success)");
+                setShowProCheckout(false);
+              }}
+              style={{
+                width: '100%',
+                background: 'linear-gradient(135deg, #a78bfa 0%, #7c3aed 100%)',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '14px',
+                fontSize: '15px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 4px 15px rgba(124, 58, 237, 0.4)',
+                marginTop: '10px'
+              }}
+            >
+              Start 7-day Free Trial
+            </button>
+
+            <span 
+              onClick={() => setShowProCheckout(false)}
+              style={{ fontSize: '13px', color: '#94a3b8', cursor: 'pointer', textDecoration: 'underline', marginTop: '6px' }}
+            >
+              Maybe later
+            </span>
           </div>
         </div>
       )}

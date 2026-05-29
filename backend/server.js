@@ -315,6 +315,30 @@ app.get('/api/users', async (req, res) => {
   }
 });
 
+app.put('/api/users/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { name, email, avatarUrl } = req.body;
+    
+    if (email) {
+      const existing = await db.getUserByEmail(email);
+      if (existing && existing._id.toString() !== userId.toString()) {
+        return res.status(400).json({ error: "Email is already in use" });
+      }
+    }
+    
+    const updatedUser = await db.updateUser(userId, { name, email, avatarUrl });
+    if (!updatedUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    const userObj = typeof updatedUser.toObject === 'function' ? updatedUser.toObject() : updatedUser;
+    res.json(userObj);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.post('/api/auth/login', async (req, res) => {
   try {
     const { email, password } = req.body;
