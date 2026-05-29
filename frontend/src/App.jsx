@@ -1552,33 +1552,23 @@ export default function App() {
           {/* Content */}
           <div style={{ flex: 1, padding: '24px 20px', overflowY: 'auto', backgroundColor: '#1c1e21', fontFamily: 'var(--font-body)', color: '#cfd2d6' }}>
             <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 700, color: 'white', marginBottom: '8px', lineHeight: '1.2' }}>
-              Splitwise Privacy Policy
+              Splitwise Inc. Privacy Statement
             </h1>
             <p style={{ fontSize: '14px', color: '#94a3b8', marginBottom: '24px' }}>
-              Last updated: February 8th, 2024
+              Last updated: May 26th, 2026
             </p>
 
-            <p style={{ fontSize: '14px', lineHeight: '1.6', marginBottom: '20px' }}>
-              Splitwise is committed to protecting your privacy. This policy describes how we collect, use, and handle your data when you use our website, mobile apps, and services.
-            </p>
-
-            <hr style={{ border: 'none', borderTop: '1px solid #2e333d', marginBottom: '24px' }} />
-
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'white', marginBottom: '16px' }}>
-              Data Usage and Storage
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 700, color: 'white', marginBottom: '12px' }}>
+              Scope
             </h3>
 
-            <ul style={{ paddingLeft: '20px', display: 'flex', flexDirection: 'column', gap: '16px', fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
-              <li>
-                <strong>Data Collection:</strong> We do not collect, store, or sell any personal identifying information. Any login or registration details are saved locally in the development server database.
-              </li>
-              <li>
-                <strong>Third-Party Integrations:</strong> Real Google OAuth 2.0 logins are handled securely via official Google Identity redirection. We only retrieve your name, email, and avatar picture upon successful authorization.
-              </li>
-              <li>
-                <strong>Local Cache:</strong> State and mock login selectors are kept within your current browser session and database for local testing purposes.
-              </li>
-            </ul>
+            <p style={{ fontSize: '14px', lineHeight: '1.6', marginBottom: '20px' }}>
+              Welcome to Splitwise’s Privacy Statement. Your right to privacy and online security is important. This Privacy Statement describes Splitwise’s collection, protection, disclosure, and use of the personal information provided to or collected through our service. This Privacy Statement applies to all of Splitwise’s websites, mobile applications, and online services that link to or reference this Privacy Statement.
+            </p>
+
+            <p style={{ fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
+              If you do not agree with any of the practices described in this Privacy Statement, please do not use our services.
+            </p>
           </div>
         </div>
       )}
