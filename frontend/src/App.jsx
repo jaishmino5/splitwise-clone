@@ -212,12 +212,8 @@ export default function App() {
       const data = await res.json();
       if (res.ok) {
         setUser(data);
-        if (data.isNewUser) {
-          setPage('tutorial');
-          setTutorialStep(1);
-        } else {
-          setPage('dashboard');
-        }
+        setPage('tutorial');
+        setTutorialStep(1);
         fetchUsers();
       } else {
         alert(data.error || "Google authentication failed");
