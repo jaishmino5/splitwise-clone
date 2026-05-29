@@ -13,7 +13,8 @@ const UserSchema = new mongoose.Schema({
   name: String,
   email: { type: String, unique: true },
   password: { type: String, required: true },
-  avatarUrl: String
+  avatarUrl: String,
+  friends: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }]
 });
 
 const GroupSchema = new mongoose.Schema({
@@ -132,11 +133,48 @@ const db = {
       const data = loadJsonDb();
       const newUser = {
         _id: new mongoose.Types.ObjectId().toString(),
+        friends: [],
         ...userData
       };
       data.users.push(newUser);
       saveJsonDb(data);
       return newUser;
+    }
+  },
+
+  async getFriends(userId) {
+    if (useMongoDB) {
+      const user = await UserModel.findById(userId).populate('friends');
+      return user ? (user.friends || []) : [];
+    } else {
+      const data = loadJsonDb();
+      const user = data.users.find(u => u._id === userId.toString());
+      if (!user) return [];
+      const friendIds = user.friends || [];
+      return friendIds.map(fId => data.users.find(u => u._id === fId)).filter(Boolean);
+    }
+  },
+
+  async addFriend(userId, friendId) {
+    if (useMongoDB) {
+      await UserModel.findByIdAndUpdate(userId, { $addToSet: { friends: friendId } });
+      await UserModel.findByIdAndUpdate(friendId, { $addToSet: { friends: userId } });
+    } else {
+      const data = loadJsonDb();
+      const user = data.users.find(u => u._id === userId.toString());
+      const friend = data.users.find(u => u._id === friendId.toString());
+      if (user && friend) {
+        if (!user.friends) user.friends = [];
+        if (!friend.friends) friend.friends = [];
+        
+        if (!user.friends.includes(friendId.toString())) {
+          user.friends.push(friendId.toString());
+        }
+        if (!friend.friends.includes(userId.toString())) {
+          friend.friends.push(userId.toString());
+        }
+        saveJsonDb(data);
+      }
     }
   },
 

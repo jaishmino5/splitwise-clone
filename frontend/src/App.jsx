@@ -39,7 +39,13 @@ export default function App() {
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showSettleUp, setShowSettleUp] = useState(false);
   const [showAddGroup, setShowAddGroup] = useState(false);
+  const [showAddFriend, setShowAddFriend] = useState(false);
   const [termsBackPage, setTermsBackPage] = useState('landing');
+
+  // Friends & Search State
+  const [friends, setFriends] = useState([]);
+  const [friendSearchQuery, setFriendSearchQuery] = useState('');
+  const [isFriendSearchActive, setIsFriendSearchActive] = useState(false);
 
   // Form Inputs
   const [authEmail, setAuthEmail] = useState('');
@@ -64,6 +70,10 @@ export default function App() {
   const [groupName, setGroupName] = useState('');
   const [groupDesc, setGroupDesc] = useState('');
   const [groupMembers, setGroupMembers] = useState([]); // Array of userIds
+
+  // Add Friend Form Inputs
+  const [friendName, setFriendName] = useState('');
+  const [friendEmail, setFriendEmail] = useState('');
 
   // Fetch initial users list
   const fetchUsers = async () => {
@@ -98,6 +108,13 @@ export default function App() {
       if (resBal.ok) {
         const data = await resBal.json();
         setDashboardBalances(data);
+      }
+
+      // 3. Fetch friends list
+      const resFriends = await fetch(`${API_BASE}/users/${user._id}/friends`);
+      if (resFriends.ok) {
+        const data = await resFriends.json();
+        setFriends(data);
       }
     } catch (err) {
       console.error("Error fetching dashboard data:", err);
@@ -310,6 +327,52 @@ export default function App() {
     }
   };
 
+  // Add Friend Action
+  const handleAddFriend = async (e) => {
+    e.preventDefault();
+    if (!friendName) return;
+    try {
+      const res = await fetch(`${API_BASE}/users/${user._id}/friends`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: friendName,
+          email: friendEmail
+        })
+      });
+      if (res.ok) {
+        setShowAddFriend(false);
+        setFriendName('');
+        setFriendEmail('');
+        await fetchDashboardData();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to add friend");
+      }
+    } catch (err) {
+      console.error("Error adding friend:", err);
+    }
+  };
+
+  const handleGeneralAddExpenseClick = () => {
+    if (groups.length > 0) {
+      const defaultGroup = groups[0];
+      setSelectedGroupId(defaultGroup._id);
+      fetchGroupDetails(defaultGroup._id);
+      setExpensePayer(user._id);
+      if (defaultGroup.members) {
+        setExpenseSplits(defaultGroup.members.map(m => m._id || m));
+      } else {
+        setExpenseSplits([user._id]);
+      }
+      setShowAddExpense(true);
+    } else {
+      // Create a default group first
+      alert("Please add a group first before splitting expenses.");
+      setShowAddGroup(true);
+    }
+  };
+
   // Add Expense Action
   const handleAddExpense = async (e) => {
     e.preventDefault();
@@ -384,22 +447,75 @@ export default function App() {
   const getGroupIcon = (name) => {
     if (!name || typeof name !== 'string') {
       return (
-        <div style={{ backgroundColor: '#fff0eb', color: '#ff652f', width: '48px', height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ fontSize: '24px' }}>🏠</span>
+        <div style={{
+          background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+          width: '54px',
+          height: '54px',
+          borderRadius: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0
+        }}>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+            <polyline points="9 22 9 12 15 12 15 22" />
+          </svg>
         </div>
       );
     }
     const lname = name.toLowerCase();
-    if (lname.includes('beach') || lname.includes('trip') || lname.includes('travel')) {
+    
+    // Non-group expenses geometric icon matching screenshot exactly
+    if (lname.includes('non-group') || lname.includes('non group')) {
       return (
-        <div style={{ backgroundColor: '#e2f4f1', color: '#1cc29f', width: '48px', height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <span style={{ fontSize: '24px' }}>✈️</span>
+        <div style={{ width: '54px', height: '54px', borderRadius: '14px', overflow: 'hidden', flexShrink: 0 }}>
+          <svg width="54" height="54" viewBox="0 0 54 54" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <rect width="54" height="54" fill="#0d9488" />
+            <polygon points="12,32 27,14 42,32" fill="#ea580c" />
+            <polygon points="27,32 54,32 54,54 36,54" fill="#7c3aed" />
+            <polygon points="0,32 27,32 18,54 0,54" fill="#10b981" />
+          </svg>
         </div>
       );
     }
+
+    // Plane icon for trips or jaish (matches user screenshot)
+    if (lname.includes('jaish') || lname.includes('beach') || lname.includes('trip') || lname.includes('travel') || lname.includes('vacation')) {
+      return (
+        <div style={{
+          background: 'linear-gradient(135deg, #1f9c87 0%, #157968 100%)',
+          width: '54px',
+          height: '54px',
+          borderRadius: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0
+        }}>
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5S19 4 17.5 5.5L14 9 5.8 7.2 4.2 8.8l8 4.7-4 4-2.8-.7L4 18.2l3.5 1.3 1.3 3.5 1.4-1.4-.7-2.8 4-4 4.7 8 1.6-1.6z" />
+          </svg>
+        </div>
+      );
+    }
+
+    // Default household / home icon
     return (
-      <div style={{ backgroundColor: '#fff0eb', color: '#ff652f', width: '48px', height: '48px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ fontSize: '24px' }}>🏠</span>
+      <div style={{
+        background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)',
+        width: '54px',
+        height: '54px',
+        borderRadius: '14px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        flexShrink: 0
+      }}>
+        <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+          <polyline points="9 22 9 12 15 12 15 22" />
+        </svg>
       </div>
     );
   };
@@ -1431,80 +1547,124 @@ export default function App() {
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          background: 'linear-gradient(135deg, #fef0ea 0%, #ffffff 100%)',
-          padding: '20px',
-          paddingBottom: '80px',
+          backgroundColor: '#18191b',
+          padding: '24px 20px 80px 20px',
           overflowY: 'auto',
-          position: 'relative'
+          position: 'relative',
+          height: '100%'
         }} className="animate-fade-in">
           
-          {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '26px', fontWeight: 800, color: '#2d3135' }}>
-              Welcome to Splitwise, <span style={{ color: 'var(--primary-teal)' }}>{user.name.split(' ')[0]}</span>!
-            </h2>
-            <div style={{ display: 'flex', gap: '10px' }}>
-              <button 
-                style={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '50%', width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}
-                onClick={() => setShowAddGroup(true)}
-                title="Create Group"
+          {/* Header Actions (Search & Add Group / Friend) */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '20px', marginBottom: '16px' }}>
+            {isFriendSearchActive && activeTab === 'friends' && (
+              <input 
+                type="text" 
+                placeholder="Search friends..." 
+                value={friendSearchQuery}
+                onChange={(e) => setFriendSearchQuery(e.target.value)}
+                style={{
+                  backgroundColor: '#22252a',
+                  border: '1px solid #3c434a',
+                  borderRadius: '10px',
+                  color: 'white',
+                  padding: '6px 12px',
+                  fontSize: '14px',
+                  flex: 1,
+                  outline: 'none'
+                }}
+              />
+            )}
+            
+            {/* Search Icon */}
+            <svg 
+              width="22" 
+              height="22" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="#cbd5e1" 
+              strokeWidth="2.5" 
+              strokeLinecap="round" 
+              strokeLinejoin="round" 
+              style={{ cursor: 'pointer' }}
+              onClick={() => {
+                if (activeTab === 'friends') {
+                  setIsFriendSearchActive(!isFriendSearchActive);
+                  if (isFriendSearchActive) setFriendSearchQuery('');
+                }
+              }}
+            >
+              <circle cx="11" cy="11" r="8" />
+              <line x1="21" y1="21" x2="16.65" y2="16.65" />
+            </svg>
+            
+            {/* Add Icon (Add Friend or Add Group based on tab) */}
+            {activeTab === 'friends' ? (
+              /* Add Friend Icon */
+              <svg 
+                width="22" 
+                height="22" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="#cbd5e1" 
+                strokeWidth="2.5" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                style={{ cursor: 'pointer' }}
+                onClick={() => setShowAddFriend(true)}
               >
-                <Plus size={18} />
-              </button>
-              <button 
-                style={{ backgroundColor: 'white', border: '1px solid #e2e8f0', borderRadius: '50%', width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#64748b' }}
-                onClick={handleLogout}
-                title="Logout"
-              >
-                <LogOut size={18} />
-              </button>
-            </div>
-          </div>
-
-          {/* Owed/Owe Banner Card */}
-          <div className="glass-card" style={{ padding: '20px', marginBottom: '24px', borderRadius: '20px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <span style={{ fontSize: '15px', fontWeight: 600, color: '#64748b', fontFamily: 'var(--font-display)' }}>
-                {dashboardBalances.netBalance > 0 ? "Overall, you are owed" : dashboardBalances.netBalance < 0 ? "Overall, you owe" : "Overall balances"}
-              </span>
-              <Settings size={18} style={{ color: '#94a3b8', cursor: 'pointer' }} />
-            </div>
-
-            <div style={{ 
-              fontSize: '32px', 
-              fontWeight: 800, 
-              color: dashboardBalances.netBalance > 0 ? 'var(--color-owed)' : dashboardBalances.netBalance < 0 ? 'var(--color-owe)' : '#475569',
-              fontFamily: 'var(--font-display)',
-              marginBottom: '4px'
-            }}>
-              ${Math.abs(dashboardBalances.netBalance).toFixed(2)}
-            </div>
-
-            <p style={{ fontSize: '12px', color: '#94a3b8' }}>
-              {dashboardBalances.netBalance > 0 
-                ? "Excellent! You are in the green." 
-                : dashboardBalances.netBalance < 0 
-                  ? "Remember to settle up with your friends!" 
-                  : "All debts are cleared!"}
-            </p>
-          </div>
-
-          {/* Groups List Section */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1, zIndex: 2 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4px' }}>
-              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '16px', fontWeight: 700, color: '#475569' }}>Active Splits</h3>
-              <span style={{ fontSize: '12px', color: 'var(--primary-teal)', cursor: 'pointer', fontWeight: 600 }}>Filter list</span>
-            </div>
-
-            {groups.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 20px', backgroundColor: 'rgba(255,255,255,0.5)', borderRadius: '16px', border: '1px dashed #cbd5e1' }}>
-                <p style={{ color: '#64748b', fontSize: '14px', marginBottom: '12px' }}>You aren't in any groups yet.</p>
-                <button className="btn-primary" style={{ padding: '8px 16px', fontSize: '13px', width: 'auto' }} onClick={() => setShowAddGroup(true)}>
-                  Create a Group
-                </button>
-              </div>
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="8.5" cy="7" r="4" />
+                <line x1="20" y1="8" x2="20" y2="14" />
+                <line x1="17" y1="11" x2="23" y2="11" />
+              </svg>
             ) : (
-              groups.map(g => {
+              /* Add Group Icon */
+              <svg 
+                width="22" 
+                height="22" 
+                viewBox="0 0 24 24" 
+                fill="none" 
+                stroke="#cbd5e1" 
+                strokeWidth="2.5" 
+                strokeLinecap="round" 
+                strokeLinejoin="round" 
+                style={{ cursor: 'pointer' }} 
+                onClick={() => setShowAddGroup(true)}
+              >
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="8.5" cy="7" r="4" />
+                <line x1="20" y1="8" x2="20" y2="14" />
+                <line x1="17" y1="11" x2="23" y2="11" />
+              </svg>
+            )}
+          </div>
+
+          {/* Status Header Bar */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600, color: 'white', margin: 0 }}>
+              {dashboardBalances.netBalance === 0 ? "You are all settled up!" :
+               dashboardBalances.netBalance > 0 ? `Overall, you are owed $${dashboardBalances.netBalance.toFixed(2)}` :
+               `Overall, you owe $${Math.abs(dashboardBalances.netBalance).toFixed(2)}`}
+            </h2>
+            {/* Sliders filter icon */}
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }}>
+              <line x1="4" y1="21" x2="4" y2="14" />
+              <line x1="4" y1="10" x2="4" y2="3" />
+              <line x1="12" y1="21" x2="12" y2="12" />
+              <line x1="12" y1="8" x2="12" y2="3" />
+              <line x1="20" y1="21" x2="20" y2="16" />
+              <line x1="20" y1="12" x2="20" y2="3" />
+              <line x1="1" y1="14" x2="7" y2="14" />
+              <line x1="9" y1="8" x2="15" y2="8" />
+              <line x1="17" y1="16" x2="23" y2="16" />
+            </svg>
+          </div>
+
+          {/* Main Tab Content */}
+          {activeTab === 'groups' && (
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '4px' }} className="animate-fade-in">
+              {/* Groups List */}
+              {groups.map(g => {
                 const status = g.currentUserStatus;
                 const type = status ? status.type : 'settled';
                 const amount = status ? status.amount : 0;
@@ -1512,162 +1672,282 @@ export default function App() {
                 return (
                   <div 
                     key={g._id}
-                    className="glass-card animate-fade-in"
                     style={{
                       display: 'flex',
                       alignItems: 'center',
-                      padding: '16px',
-                      borderRadius: '16px',
+                      padding: '12px 0',
                       cursor: 'pointer',
-                      transition: 'var(--transition)'
+                      borderBottom: '1.5px solid #22252a'
                     }}
                     onClick={() => {
                       setSelectedGroupId(g._id);
                       setPage('group-details');
                     }}
-                    onMouseEnter={(e) => e.currentTarget.style.transform = 'translateY(-2px)'}
-                    onMouseLeave={(e) => e.currentTarget.style.transform = 'none'}
                   >
                     {getGroupIcon(g.name)}
                     
-                    <div style={{ flex: 1, marginLeft: '16px' }}>
-                      <h4 style={{ fontSize: '16px', fontWeight: 700, color: '#1e293b', marginBottom: '4px' }}>{g.name}</h4>
-                      
-                      {/* Sub-details of who owes what */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                        {status && status.owesTo && status.owesTo.filter(d => d && d.user).map(d => (
-                          <span key={d.user._id} style={{ fontSize: '11px', color: 'var(--color-owe)' }}>
-                            You owe {d.user.name} ${d.amount.toFixed(2)}
-                          </span>
-                        ))}
-                        {status && status.owedBy && status.owedBy.filter(d => d && d.user).map(d => (
-                          <span key={d.user._id} style={{ fontSize: '11px', color: 'var(--color-owed)' }}>
-                            {d.user.name} owes you ${d.amount.toFixed(2)}
-                          </span>
-                        ))}
-                        {(!status || (status.owesTo.length === 0 && status.owedBy.length === 0)) && (
-                          <span style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
-                            No active balances
-                          </span>
-                        )}
-                      </div>
-                    </div>
-
-                    <div style={{ textAlign: 'right' }}>
+                    <div style={{ flex: 1, marginLeft: '16px', display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                      <span style={{ fontSize: '16px', fontWeight: 600, color: 'white' }}>{g.name}</span>
                       <span style={{ 
-                        fontSize: '11px', 
-                        fontWeight: 600, 
-                        color: type === 'owed' ? 'var(--color-owed)' : type === 'owe' ? 'var(--color-owe)' : 'var(--text-secondary)',
-                        display: 'block',
-                        textTransform: 'uppercase',
-                        letterSpacing: '0.5px'
+                        fontSize: '14px', 
+                        color: type === 'owed' ? '#1cc29f' : type === 'owe' ? '#ff652f' : '#94a3b8',
+                        marginTop: '2px'
                       }}>
-                        {type === 'owed' ? 'you are owed' : type === 'owe' ? 'you owe' : 'settled up'}
+                        {type === 'owed' ? `you are owed $${amount.toFixed(2)}` : 
+                         type === 'owe' ? `you owe $${amount.toFixed(2)}` : 'no expenses'}
                       </span>
-                      {amount > 0 && (
-                        <span style={{ 
-                          fontSize: '16px', 
-                          fontWeight: 800, 
-                          color: type === 'owed' ? 'var(--color-owed)' : 'var(--color-owe)'
-                        }}>
-                          ${amount.toFixed(2)}
-                        </span>
-                      )}
                     </div>
                   </div>
                 );
-              })
-            )}
-          </div>
+              })}
 
-          {/* Carousel Dots & Bottom Illustration Spacer */}
-          <div style={{ display: 'flex', justifyContent: 'center', gap: '6px', margin: '24px 0 100px 0', zIndex: 2 }}>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: 'var(--primary-teal)' }}></span>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#cbd5e1' }}></span>
-            <span style={{ width: '6px', height: '6px', borderRadius: '50%', backgroundColor: '#cbd5e1' }}></span>
-          </div>
+              {/* Start a New Group Button */}
+              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px', marginBottom: '24px' }}>
+                <button 
+                  onClick={() => setShowAddGroup(true)}
+                  style={{
+                    background: 'transparent',
+                    border: '1.5px solid #1cc29f',
+                    borderRadius: '8px',
+                    color: '#1cc29f',
+                    padding: '10px 20px',
+                    fontSize: '15px',
+                    fontWeight: 600,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="8.5" cy="7" r="4" />
+                    <line x1="20" y1="8" x2="20" y2="14" />
+                    <line x1="17" y1="11" x2="23" y2="11" />
+                  </svg>
+                  Start a new group
+                </button>
+              </div>
+            </div>
+          )}
 
-          {/* Beach Landscape Vector Illustration (matching screenshot 5) */}
-          <div style={{
-            position: 'absolute',
-            bottom: '70px',
-            left: 0,
-            right: 0,
-            height: '160px',
-            pointerEvents: 'none',
-            zIndex: 1,
-            overflow: 'hidden'
-          }}>
-            <svg viewBox="0 0 450 160" width="100%" height="100%" preserveAspectRatio="none" style={{ position: 'absolute', bottom: 0 }}>
-              {/* Sunset Sky / Mountains */}
-              <path d="M 0,160 Q 150,110 225,120 Q 300,130 450,110 L 450,160 Z" fill="#fde0d5" opacity="0.6" />
-              {/* Sun rising/setting */}
-              <circle cx="225" cy="115" r="35" fill="#f97316" opacity="0.8" />
-              {/* Beach Sand Layer 1 */}
-              <path d="M 0,160 Q 120,120 225,130 Q 330,140 450,125 L 450,160 Z" fill="#fef3c7" />
-              {/* Sea Water */}
-              <path d="M 0,160 Q 150,140 225,148 Q 300,155 450,140 L 450,160 Z" fill="#93c5fd" opacity="0.7" />
-              {/* Beach Sand Layer 2 (Foreground) */}
-              <path d="M 0,160 Q 90,145 225,150 Q 360,155 450,148 L 450,160 Z" fill="#fffbeb" />
-              
-              {/* People silhouette */}
-              <g transform="translate(205, 120) scale(0.65)" opacity="0.8">
-                {/* Person 1 */}
-                <circle cx="10" cy="20" r="5" fill="#334155" />
-                <rect x="7" y="27" width="6" height="15" rx="2" fill="#334155" />
-                {/* Person 2 */}
-                <circle cx="25" cy="16" r="5.5" fill="#334155" />
-                <rect x="21" y="23" width="8" height="20" rx="2" fill="#334155" />
-                {/* Person 3 */}
-                <circle cx="40" cy="20" r="5" fill="#334155" />
-                <rect x="37" y="27" width="6" height="15" rx="2" fill="#334155" />
-                {/* Pier outline */}
-                <rect x="-10" y="42" width="70" height="3" fill="#334155" />
-              </g>
+          {activeTab === 'friends' && (
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }} className="animate-fade-in">
+              {friends.length === 0 ? (
+                /* Empty state */
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '40px 20px', textAlign: 'center' }}>
+                  <span style={{ fontSize: '48px', marginBottom: '16px' }}>👥</span>
+                  <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'white', marginBottom: '8px' }}>No friends added yet</h3>
+                  <p style={{ fontSize: '14px', color: '#cbd5e1', marginBottom: '24px' }}>Add friends to split group expenses or individual IOUs!</p>
+                  
+                  {/* Bordered Add Friends Button (Teal Outline) */}
+                  <button 
+                    onClick={() => setShowAddFriend(true)}
+                    style={{
+                      border: '1.5px solid #1cc29f',
+                      background: 'transparent',
+                      borderRadius: '8px',
+                      color: '#bce8e1',
+                      padding: '10px 24px',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      outline: 'none'
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <circle cx="8.5" cy="7" r="4" />
+                      <line x1="20" y1="8" x2="20" y2="14" />
+                      <line x1="17" y1="11" x2="23" y2="11" />
+                    </svg>
+                    Add more friends
+                  </button>
+                </div>
+              ) : (
+                /* Friends List */
+                <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    {friends
+                      .filter(f => f.name.toLowerCase().includes(friendSearchQuery.toLowerCase()))
+                      .map(f => {
+                        const balance = f.balance || { type: 'settled', netBalance: 0, text: 'no expenses' };
+                        return (
+                          <div 
+                            key={f._id}
+                            style={{
+                              display: 'flex',
+                              alignItems: 'center',
+                              padding: '14px 0',
+                              borderBottom: '1.5px solid #22252a',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            {/* Envelope Circle Icon */}
+                            <div style={{
+                              backgroundColor: '#2d3035',
+                              width: '44px',
+                              height: '44px',
+                              borderRadius: '50%',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              marginRight: '16px',
+                              flexShrink: 0
+                            }}>
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#a0aec0" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                                <polyline points="22,6 12,13 2,6" />
+                              </svg>
+                            </div>
+                            
+                            {/* Friend Info */}
+                            <div style={{ flex: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '16px', fontWeight: 500, color: 'white' }}>{f.name}</span>
+                              <span style={{ 
+                                fontSize: '13px', 
+                                color: balance.type === 'owed' ? '#1cc29f' : balance.type === 'owe' ? '#ff652f' : '#cbd5e1' 
+                              }}>
+                                {balance.text}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                  
+                  {/* Bordered Add Friends Button (Teal Outline) */}
+                  <button 
+                    onClick={() => setShowAddFriend(true)}
+                    style={{
+                      border: '1.5px solid #1cc29f',
+                      background: 'transparent',
+                      borderRadius: '8px',
+                      color: '#bce8e1',
+                      padding: '10px 24px',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      margin: '24px auto',
+                      outline: 'none'
+                    }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <circle cx="8.5" cy="7" r="4" />
+                      <line x1="20" y1="8" x2="20" y2="14" />
+                      <line x1="17" y1="11" x2="23" y2="11" />
+                    </svg>
+                    Add more friends
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
 
-              {/* Beach Parasol / Umbrella */}
-              <g transform="translate(50, 105) scale(0.6)">
-                <line x1="20" y1="20" x2="20" y2="70" stroke="#78350f" strokeWidth="2.5" />
-                <path d="M -5,25 Q 20,-10 45,25 Z" fill="#a855f7" />
-                <path d="M 5,22 Q 20,2 35,22 Z" fill="#f43f5e" />
-                <path d="M 12,20 Q 20,10 28,20 Z" fill="#3b82f6" />
-              </g>
+          {activeTab === 'activity' && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '40px 20px', textAlign: 'center' }} className="animate-fade-in">
+              <span style={{ fontSize: '48px', marginBottom: '16px' }}>📈</span>
+              <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'white', marginBottom: '8px' }}>No recent activity</h3>
+              <p style={{ fontSize: '14px', color: '#cbd5e1' }}>All group expenses, settlement records, and edits will appear here.</p>
+            </div>
+          )}
 
-              {/* Surfboards */}
-              <g transform="translate(340, 110) scale(0.55)">
-                {/* Board 1 */}
-                <path d="M 15,10 Q 22,30 22,70 L 8,70 Q 8,30 15,10 Z" fill="#ec4899" />
-                <rect x="14" y="20" width="2" height="40" fill="white" />
-                {/* Board 2 */}
-                <path d="M 35,5 Q 42,25 42,65 L 28,65 Q 28,25 35,5 Z" fill="#06b6d4" />
-                <rect x="34" y="15" width="2" height="40" fill="white" />
-              </g>
+          {activeTab === 'account' && (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, padding: '20px 0' }} className="animate-fade-in">
+              {/* Profile Card */}
+              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', margin: '20px 0 40px 0' }}>
+                <img 
+                  src={user.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${user.name}`} 
+                  alt="Avatar" 
+                  style={{ width: '96px', height: '96px', borderRadius: '50%', border: '3px solid #1cc29f', backgroundColor: '#131415' }}
+                />
+                <h3 style={{ fontSize: '22px', fontWeight: 700, color: 'white', margin: 0 }}>{user.name}</h3>
+                <span style={{ fontSize: '14px', color: '#94a3b8' }}>{user.email}</span>
+              </div>
 
-              {/* Beach Ball */}
-              <circle cx="310" cy="148" r="8" fill="#eab308" />
-              <path d="M 302,148 Q 310,140 318,148 Z" fill="#ef4444" />
-              <circle cx="310" cy="148" r="3" fill="white" />
+              {/* Action Buttons */}
+              <button 
+                onClick={handleLogout}
+                className="btn-primary" 
+                style={{
+                  backgroundColor: '#ff652f',
+                  color: 'white',
+                  borderRadius: '10px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '8px',
+                  padding: '14px',
+                  width: '100%',
+                  maxWidth: '280px',
+                  fontSize: '16px',
+                  boxShadow: '0 4px 15px rgba(255, 101, 47, 0.2)'
+                }}
+              >
+                <LogOut size={18} />
+                Log out
+              </button>
+            </div>
+          )}
 
-              {/* Leaping Dolphin in background */}
-              <path d="M 290,115 Q 300,100 310,112 Q 303,108 290,115" fill="#3b82f6" opacity="0.6" />
-            </svg>
-          </div>
+          {/* Floating Action Button (Add expense) - show on Groups or Friends tab */}
+          {(activeTab === 'groups' || activeTab === 'friends') && (
+            <button 
+              onClick={handleGeneralAddExpenseClick}
+              style={{
+                position: 'absolute',
+                bottom: '90px',
+                right: '20px',
+                backgroundColor: '#1cc29f',
+                color: 'white',
+                border: 'none',
+                borderRadius: '30px',
+                padding: '12px 24px',
+                fontSize: '15px',
+                fontWeight: 700,
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 15px rgba(28, 194, 159, 0.4)',
+                cursor: 'pointer',
+                zIndex: 10
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
+                <line x1="9" y1="22" x2="9" y2="16" />
+                <line x1="8" y1="6" x2="16" y2="6" />
+                <line x1="8" y1="10" x2="16" y2="10" />
+                <line x1="8" y1="14" x2="16" y2="14" />
+              </svg>
+              Add expense
+            </button>
+          )}
 
-          {/* Bottom Nav Bar */}
-          <div className="bottom-nav">
-            <button className={`nav-item ${activeTab === 'groups' ? 'active' : ''}`} onClick={() => setActiveTab('groups')}>
+          {/* Bottom Nav Bar (Dark theme override) */}
+          <div className="bottom-nav" style={{ backgroundColor: '#18191b', borderTop: '1.5px solid #22252a' }}>
+            <button className={`nav-item ${activeTab === 'groups' ? 'active' : ''}`} style={{ color: activeTab === 'groups' ? '#1cc29f' : '#cbd5e1' }} onClick={() => setActiveTab('groups')}>
               <Users />
               <span>Groups</span>
             </button>
-            <button className={`nav-item ${activeTab === 'friends' ? 'active' : ''}`} onClick={() => setActiveTab('friends')}>
+            <button className={`nav-item ${activeTab === 'friends' ? 'active' : ''}`} style={{ color: activeTab === 'friends' ? '#1cc29f' : '#cbd5e1' }} onClick={() => setActiveTab('friends')}>
               <UserIcon />
               <span>Friends</span>
             </button>
-            <button className={`nav-item ${activeTab === 'activity' ? 'active' : ''}`} onClick={() => setActiveTab('activity')}>
+            <button className={`nav-item ${activeTab === 'activity' ? 'active' : ''}`} style={{ color: activeTab === 'activity' ? '#1cc29f' : '#cbd5e1' }} onClick={() => setActiveTab('activity')}>
               <Layers />
               <span>Activity</span>
             </button>
-            <button className={`nav-item ${activeTab === 'account' ? 'active' : ''}`} onClick={() => setActiveTab('account')}>
+            <button className={`nav-item ${activeTab === 'account' ? 'active' : ''}`} style={{ color: activeTab === 'account' ? '#1cc29f' : '#cbd5e1' }} onClick={() => setActiveTab('account')}>
               <CreditCard />
               <span>Account</span>
             </button>
@@ -2185,6 +2465,68 @@ export default function App() {
                 </button>
                 <button type="submit" className="btn-primary" style={{ flex: 1 }}>
                   Create
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* D. ADD FRIEND MODAL */}
+      {showAddFriend && (
+        <div style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center',
+          zIndex: 100,
+          padding: '20px'
+        }}>
+          <div className="glass-card animate-fade-in" style={{
+            width: '100%',
+            backgroundColor: 'white',
+            padding: '24px',
+            borderRadius: '20px',
+            boxShadow: 'var(--shadow-lg)',
+            maxHeight: '90%',
+            overflowY: 'auto'
+          }}>
+            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 800, marginBottom: '20px', color: '#1e293b' }}>
+              Add a friend
+            </h3>
+
+            <form onSubmit={handleAddFriend} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div className="input-group">
+                <label className="input-label">Friend's Name</label>
+                <input 
+                  type="text" 
+                  className="input-field" 
+                  placeholder="e.g. Mummy or John"
+                  value={friendName} 
+                  onChange={(e) => setFriendName(e.target.value)} 
+                  required 
+                />
+              </div>
+
+              <div className="input-group">
+                <label className="input-label">Email address (Optional)</label>
+                <input 
+                  type="email" 
+                  className="input-field" 
+                  placeholder="friend@example.com"
+                  value={friendEmail} 
+                  onChange={(e) => setFriendEmail(e.target.value)} 
+                />
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
+                <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowAddFriend(false)}>
+                  Cancel
+                </button>
+                <button type="submit" className="btn-primary" style={{ flex: 1 }}>
+                  Add friend
                 </button>
               </div>
             </form>
