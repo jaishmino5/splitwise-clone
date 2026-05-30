@@ -4025,57 +4025,55 @@ export default function App() {
                 gap: '4px', 
                 overflowY: 'auto'
               }}>
-                {users.filter(u => u._id !== user._id).map(u => {
-                  const isChecked = groupMembers.includes(u._id);
-                  const initials = u.name ? u.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
-                  return (
-                    <div 
-                      key={u._id}
-                      onClick={() => {
-                        if (isChecked) {
+                {groupMembers.length === 0 ? (
+                  <div style={{ padding: '24px 16px', color: 'rgba(255, 255, 255, 0.4)', fontSize: '13.5px', textAlign: 'center', fontFamily: 'var(--font-body)', lineHeight: '1.4' }}>
+                    No members added yet.<br/>Tap "Select from Phone Contacts Book" above to add friends!
+                  </div>
+                ) : (
+                  users.filter(u => groupMembers.includes(u._id)).map(u => {
+                    const initials = u.name ? u.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
+                    return (
+                      <div 
+                        key={u._id}
+                        onClick={() => {
                           setGroupMembers(groupMembers.filter(id => id !== u._id));
-                        } else {
-                          setGroupMembers([...groupMembers, u._id]);
-                        }
-                      }}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '12px 0',
-                        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
-                        cursor: 'pointer',
-                        userSelect: 'none'
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                        {/* Circular Initials Avatar */}
-                        <div style={{
-                          width: '38px',
-                          height: '38px',
-                          borderRadius: '50%',
-                          backgroundColor: isChecked ? 'rgba(28, 194, 159, 0.15)' : 'rgba(255, 255, 255, 0.1)',
-                          border: isChecked ? '1px solid #1cc29f' : '1px solid transparent',
+                        }}
+                        style={{
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center',
-                          color: isChecked ? '#1cc29f' : '#e2e8f0',
-                          fontWeight: '600',
-                          fontSize: '14px',
-                          transition: 'all 0.2s ease'
-                        }}>
-                          {initials}
+                          justifyContent: 'space-between',
+                          padding: '12px 0',
+                          borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                          cursor: 'pointer',
+                          userSelect: 'none'
+                        }}
+                      >
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                          {/* Circular Initials Avatar */}
+                          <div style={{
+                            width: '38px',
+                            height: '38px',
+                            borderRadius: '50%',
+                            backgroundColor: 'rgba(28, 194, 159, 0.15)',
+                            border: '1px solid #1cc29f',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: '#1cc29f',
+                            fontWeight: '600',
+                            fontSize: '14px'
+                          }}>
+                            {initials}
+                          </div>
+
+                          {/* Name & Email */}
+                          <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                            <span style={{ color: 'white', fontWeight: 500, fontSize: '15px' }}>{u.name}</span>
+                            <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>{u.email}</span>
+                          </div>
                         </div>
 
-                        {/* Name & Email */}
-                        <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-                          <span style={{ color: 'white', fontWeight: 500, fontSize: '15px' }}>{u.name}</span>
-                          <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>{u.email}</span>
-                        </div>
-                      </div>
-
-                      {/* Custom Circular Checkbox */}
-                      {isChecked ? (
+                        {/* Custom Circular Checkbox (Selected checkmark) */}
                         <div style={{
                           width: '22px',
                           height: '22px',
@@ -4083,26 +4081,16 @@ export default function App() {
                           backgroundColor: '#1cc29f',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center',
-                          transition: 'all 0.2s ease'
+                          justifyContent: 'center'
                         }}>
                           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="20 6 9 17 4 12" />
                           </svg>
                         </div>
-                      ) : (
-                        <div style={{
-                          width: '22px',
-                          height: '22px',
-                          borderRadius: '50%',
-                          border: '2px solid rgba(255, 255, 255, 0.3)',
-                          backgroundColor: 'transparent',
-                          transition: 'all 0.2s ease'
-                        }} />
-                      )}
-                    </div>
-                  );
-                })}
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </div>
           </form>
