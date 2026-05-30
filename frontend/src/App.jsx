@@ -82,6 +82,7 @@ export default function App() {
   const [contactsPermission, setContactsPermission] = useState(() => localStorage.getItem('splitwise_contacts_permission') || 'prompt');
   const [searchContactQuery, setSearchContactQuery] = useState('');
   const [showPermissionDialog, setShowPermissionDialog] = useState(false);
+  const [contactsPickerMode, setContactsPickerMode] = useState('friend'); // 'friend' or 'group'
 
   // Form Inputs
   const [authEmail, setAuthEmail] = useState('');
@@ -453,19 +454,29 @@ export default function App() {
         const opts = { multiple: true };
         const picked = await navigator.contacts.select(props, opts);
         if (picked && picked.length > 0) {
+          const newCheckedIds = [...groupMembers];
           for (const contact of picked) {
             const name = contact.name?.[0] || 'Unknown';
             const phone = contact.tel?.[0] || '';
             const email = `phone_${phone.replace(/\s+/g, '')}@splitwise.demo`;
             
-            await fetch(`${API_BASE}/users/${user._id}/friends`, {
+            const res = await fetch(`${API_BASE}/users/${user._id}/friends`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ name, email })
             });
+            if (res.ok && contactsPickerMode === 'group') {
+              const newFriend = await res.json();
+              if (newFriend && newFriend._id && !newCheckedIds.includes(newFriend._id)) {
+                newCheckedIds.push(newFriend._id);
+              }
+            }
+          }
+          if (contactsPickerMode === 'group') {
+            setGroupMembers(newCheckedIds);
           }
           await fetchDashboardData();
-          alert(`Successfully imported ${picked.length} friends from your phone!`);
+          alert(`Successfully imported ${picked.length} contacts!`);
           return; // Done, no need to open fallback screen!
         }
       } catch (err) {
@@ -492,16 +503,26 @@ export default function App() {
         const opts = { multiple: true };
         const picked = await navigator.contacts.select(props, opts);
         if (picked && picked.length > 0) {
+          const newCheckedIds = [...groupMembers];
           for (const contact of picked) {
             const name = contact.name?.[0] || 'Unknown';
             const phone = contact.tel?.[0] || '';
             const email = `phone_${phone.replace(/\s+/g, '')}@splitwise.demo`;
             
-            await fetch(`${API_BASE}/users/${user._id}/friends`, {
+            const res = await fetch(`${API_BASE}/users/${user._id}/friends`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ name, email })
             });
+            if (res.ok && contactsPickerMode === 'group') {
+              const newFriend = await res.json();
+              if (newFriend && newFriend._id && !newCheckedIds.includes(newFriend._id)) {
+                newCheckedIds.push(newFriend._id);
+              }
+            }
+          }
+          if (contactsPickerMode === 'group') {
+            setGroupMembers(newCheckedIds);
           }
           await fetchDashboardData();
           setShowAddFriend(false);
@@ -531,6 +552,12 @@ export default function App() {
         })
       });
       if (res.ok) {
+        const newFriend = await res.json();
+        if (contactsPickerMode === 'group') {
+          if (newFriend && newFriend._id && !groupMembers.includes(newFriend._id)) {
+            setGroupMembers([...groupMembers, newFriend._id]);
+          }
+        }
         setShowAddFriend(false);
         setSearchContactQuery('');
         await fetchDashboardData();
@@ -1869,7 +1896,10 @@ export default function App() {
                   strokeLinecap="round" 
                   strokeLinejoin="round" 
                   style={{ cursor: 'pointer' }}
-                  onClick={handleOpenAddFriend}
+                  onClick={() => {
+                    setContactsPickerMode('friend');
+                    handleOpenAddFriend();
+                  }}
                 >
                   <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                   <circle cx="8.5" cy="7" r="4" />
@@ -2111,7 +2141,10 @@ export default function App() {
                   
                   {/* Bordered Add Friends Button (Teal Outline) */}
                   <button 
-                    onClick={handleOpenAddFriend}
+                    onClick={() => {
+                      setContactsPickerMode('friend');
+                      handleOpenAddFriend();
+                    }}
                     style={{
                       border: '1.2px solid rgba(28, 194, 159, 0.5)',
                       background: 'transparent',
@@ -2200,7 +2233,10 @@ export default function App() {
                   
                   {/* Bordered Add Friends Button (Teal Outline) */}
                   <button 
-                    onClick={handleOpenAddFriend}
+                    onClick={() => {
+                      setContactsPickerMode('friend');
+                      handleOpenAddFriend();
+                    }}
                     style={{
                       border: '1.5px solid #1cc29f',
                       background: 'transparent',
@@ -3947,42 +3983,9 @@ export default function App() {
 
               {/* Native Contact Picker integration inside Create Group */}
               <div 
-                onClick={async () => {
-                  if ('contacts' in navigator && 'ContactsManager' in window) {
-                    try {
-                      const props = ['name', 'tel'];
-                      const opts = { multiple: true };
-                      const picked = await navigator.contacts.select(props, opts);
-                      if (picked && picked.length > 0) {
-                        const newCheckedIds = [...groupMembers];
-                        for (const contact of picked) {
-                          const name = contact.name?.[0] || 'Unknown';
-                          const phone = contact.tel?.[0] || '';
-                          const email = `phone_${phone.replace(/\s+/g, '')}@splitwise.demo`;
-                          
-                          // Post to backend to register user
-                          const res = await fetch(`${API_BASE}/users/${user._id}/friends`, {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ name, email })
-                          });
-                          if (res.ok) {
-                            const newFriend = await res.json();
-                            if (newFriend && newFriend._id && !newCheckedIds.includes(newFriend._id)) {
-                              newCheckedIds.push(newFriend._id);
-                            }
-                          }
-                        }
-                        setGroupMembers(newCheckedIds);
-                        await fetchDashboardData(); // Refresh UI list
-                        alert(`Successfully imported and added ${picked.length} members from your phone!`);
-                      }
-                    } catch (err) {
-                      console.log("Native Group Contact Picker failed/closed:", err);
-                    }
-                  } else {
-                    alert("Direct phone contacts fetching is supported natively on mobile browsers over secure HTTPS. For desktop/simulators, please select from the pre-seeded friends list directly below!");
-                  }
+                onClick={() => {
+                  setContactsPickerMode('group');
+                  handleOpenAddFriend();
                 }}
                 style={{
                   display: 'flex',
