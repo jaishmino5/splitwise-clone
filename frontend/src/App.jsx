@@ -246,6 +246,59 @@ export default function App() {
     }
   }, [user]);
 
+  // Handle pending group join invitations via shared links
+  useEffect(() => {
+    const match = window.location.pathname.match(/\/join-group\/([a-zA-Z0-9_-]+)/);
+    if (match && match[1]) {
+      const groupId = match[1];
+      sessionStorage.setItem('pending_join_group_id', groupId);
+      // Clean up URL instantly to keep it neat
+      window.history.replaceState(null, null, window.location.origin);
+    }
+  }, []);
+
+  useEffect(() => {
+    const checkPendingJoin = async () => {
+      if (!user) return;
+      const pendingGroupId = sessionStorage.getItem('pending_join_group_id');
+      if (pendingGroupId) {
+        sessionStorage.removeItem('pending_join_group_id');
+        try {
+          const res = await fetch(`${API_BASE}/groups/${pendingGroupId}`);
+          if (res.ok) {
+            const data = await res.json();
+            const group = data.group;
+            if (group) {
+              const currentMembers = group.members || [];
+              const memberIds = currentMembers.map(m => m && (m._id || m)).filter(Boolean);
+              
+              if (!memberIds.includes(user._id)) {
+                const updatedMembers = [...memberIds, user._id];
+                const resPut = await fetch(`${API_BASE}/groups/${pendingGroupId}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ members: updatedMembers })
+                });
+                if (resPut.ok) {
+                  alert(`Successfully joined group "${group.name}"!`);
+                }
+              }
+              
+              setSelectedGroupId(pendingGroupId);
+              await fetchGroupDetails(pendingGroupId);
+              await fetchDashboardData();
+              setPage('group-details');
+            }
+          }
+        } catch (err) {
+          console.error("Error joining pending group:", err);
+        }
+      }
+    };
+    
+    checkPendingJoin();
+  }, [user]);
+
   // Fetch specific group details
   const fetchGroupDetails = async (groupId) => {
     if (!user || !groupId) return;
@@ -543,8 +596,8 @@ export default function App() {
                   if (selectedGroupId && !showAddGroup) {
                     // Add directly to existing group members
                     const currentMembers = selectedGroupDetails?.group?.members || [];
-                    if (!currentMembers.some(m => m._id === newFriend._id)) {
-                      const updatedMembers = [...currentMembers.map(m => m._id), newFriend._id];
+                    if (!currentMembers.some(m => m && (m._id || m) === newFriend._id)) {
+                      const updatedMembers = [...currentMembers.filter(Boolean).map(m => m._id || m), newFriend._id];
                       await fetch(`${API_BASE}/groups/${selectedGroupId}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
@@ -638,8 +691,8 @@ export default function App() {
                   if (selectedGroupId && !showAddGroup) {
                     // Add directly to existing group members
                     const currentMembers = selectedGroupDetails?.group?.members || [];
-                    if (!currentMembers.some(m => m._id === newFriend._id)) {
-                      const updatedMembers = [...currentMembers.map(m => m._id), newFriend._id];
+                    if (!currentMembers.some(m => m && (m._id || m) === newFriend._id)) {
+                      const updatedMembers = [...currentMembers.filter(Boolean).map(m => m._id || m), newFriend._id];
                       await fetch(`${API_BASE}/groups/${selectedGroupId}`, {
                         method: 'PUT',
                         headers: { 'Content-Type': 'application/json' },
@@ -721,8 +774,8 @@ export default function App() {
             if (selectedGroupId && !showAddGroup) {
               // Existing group
               const currentMembers = selectedGroupDetails?.group?.members || [];
-              if (!currentMembers.some(m => m._id === newFriend._id)) {
-                const updatedMembers = [...currentMembers.map(m => m._id), newFriend._id];
+              if (!currentMembers.some(m => m && (m._id || m) === newFriend._id)) {
+                const updatedMembers = [...currentMembers.filter(Boolean).map(m => m._id || m), newFriend._id];
                 await fetch(`${API_BASE}/groups/${selectedGroupId}`, {
                   method: 'PUT',
                   headers: { 'Content-Type': 'application/json' },
@@ -3266,7 +3319,7 @@ export default function App() {
                     <path d="M16 3.13a4 4 0 0 1 0 7.75" />
                   </svg>
                   <span style={{ fontSize: '13px', color: 'white', fontWeight: 500 }}>
-                    {selectedGroupDetails.group.members.length} people +
+                    {selectedGroupDetails.group.members ? selectedGroupDetails.group.members.filter(Boolean).length : 0} people +
                   </span>
                 </div>
               </div>
@@ -3551,6 +3604,73 @@ export default function App() {
                   </svg>
                 </div>
               </div>
+            ) : (selectedGroupDetails?.group?.members?.filter(Boolean).length <= 1) ? (
+              /* Custom High-Fidelity Empty Group Card */
+              <div style={{
+                backgroundColor: '#202124',
+                borderRadius: '16px',
+                padding: '24px 20px',
+                textAlign: 'center',
+                marginTop: '10px',
+                border: '1px solid rgba(255, 255, 255, 0.06)'
+              }}>
+                <p style={{ color: '#e3e3e3', fontSize: '15px', fontWeight: 400, margin: 0 }}>
+                  You're the only one here!
+                </p>
+                
+                {/* Button 1: Add group members */}
+                <div 
+                  onClick={() => {
+                    setContactsPickerMode('group');
+                    handleOpenAddFriend();
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    backgroundColor: '#1cc29f',
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: '15px',
+                    padding: '13px 0',
+                    borderRadius: '24px',
+                    marginTop: '18px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="8.5" cy="7" r="4" />
+                    <line x1="20" y1="8" x2="20" y2="14" />
+                    <line x1="17" y1="11" x2="23" y2="11" />
+                  </svg>
+                  Add group members
+                </div>
+
+                {/* Button 2: Share group link */}
+                <div 
+                  onClick={handleShareGroupLink}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'transparent',
+                    border: '1.2px solid rgba(255, 255, 255, 0.22)',
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: '15px',
+                    padding: '13px 0',
+                    borderRadius: '24px',
+                    marginTop: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Share group link
+                </div>
+              </div>
             ) : expenses.length > 0 || settlements.length > 0 ? (
               <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '12px' }}>
                 {(() => {
@@ -3812,7 +3932,7 @@ export default function App() {
                 })()}
               </div>
             ) : (
-              /* Custom High-Fidelity Empty Group Card */
+              /* Custom High-Fidelity Empty Group Card (when there are members but no expenses) */
               <div style={{
                 backgroundColor: '#202124',
                 borderRadius: '16px',
@@ -3822,14 +3942,14 @@ export default function App() {
                 border: '1px solid rgba(255, 255, 255, 0.06)'
               }}>
                 <p style={{ color: '#e3e3e3', fontSize: '15px', fontWeight: 400, margin: 0 }}>
-                  You're the only one here!
+                  No expenses recorded yet.
                 </p>
-                
-                {/* Button 1: Add group members */}
                 <div 
                   onClick={() => {
-                    setContactsPickerMode('group');
-                    handleOpenAddFriend();
+                    setExpensePayer(user._id);
+                    setExpenseSplits(selectedGroupDetails?.group?.members ? selectedGroupDetails.group.members.filter(m => m && m._id).map(m => m._id) : [user._id]);
+                    setExpenseFromHome(false);
+                    setShowAddExpense(true);
                   }}
                   style={{
                     display: 'flex',
@@ -3847,35 +3967,8 @@ export default function App() {
                     transition: 'all 0.2s ease'
                   }}
                 >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="8.5" cy="7" r="4" />
-                    <line x1="20" y1="8" x2="20" y2="14" />
-                    <line x1="17" y1="11" x2="23" y2="11" />
-                  </svg>
-                  Add group members
-                </div>
-
-                {/* Button 2: Share group link */}
-                <div 
-                  onClick={handleShareGroupLink}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: 'transparent',
-                    border: '1.2px solid rgba(255, 255, 255, 0.22)',
-                    color: 'white',
-                    fontWeight: 600,
-                    fontSize: '15px',
-                    padding: '13px 0',
-                    borderRadius: '24px',
-                    marginTop: '12px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  Share group link
+                  <Plus width="18" height="18" style={{ stroke: 'white', strokeWidth: '2.5px' }} />
+                  Add an expense
                 </div>
               </div>
             )}
@@ -4265,7 +4358,7 @@ export default function App() {
                 </label>
 
                 {/* Other members */}
-                {selectedGroupDetails?.group?.members?.filter(m => m._id !== user._id).map(m => {
+                {selectedGroupDetails?.group?.members?.filter(m => m && m._id !== user._id).map(m => {
                   const isChecked = expenseSplits.includes(m._id);
                   return (
                     <label key={m._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '15px', cursor: 'pointer' }}>
@@ -4500,7 +4593,7 @@ export default function App() {
                   </div>
                   
                   {/* Other members */}
-                  {selectedGroupDetails?.group?.members?.filter(m => m._id !== user._id).map(m => (
+                  {selectedGroupDetails?.group?.members?.filter(m => m && m._id !== user._id).map(m => (
                     <div 
                       key={m._id}
                       onClick={() => {
@@ -4734,7 +4827,7 @@ export default function App() {
                 </div>
 
                 {/* 3. List of current members */}
-                {selectedGroupDetails.group.members.map(m => {
+                {selectedGroupDetails.group.members.filter(Boolean).map(m => {
                   const initials = m.name ? m.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
                   
                   // Display phone number dynamically if email is a placeholder imported phone
@@ -5133,8 +5226,8 @@ export default function App() {
 
                 {/* 2. Text Summary Description */}
                 {(() => {
-                  const fromMember = selectedGroupDetails.group.members.find(m => m._id === settleFrom);
-                  const toMember = selectedGroupDetails.group.members.find(m => m._id === settleTo);
+                  const fromMember = selectedGroupDetails.group.members.filter(Boolean).find(m => m._id === settleFrom);
+                  const toMember = selectedGroupDetails.group.members.filter(Boolean).find(m => m._id === settleTo);
                   const fromName = fromMember ? fromMember.name : 'Someone';
                   const toName = toMember ? toMember.name : 'Someone';
                   
