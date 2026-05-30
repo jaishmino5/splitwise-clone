@@ -3536,32 +3536,34 @@ export default function App() {
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 80px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             
             {/* Status Balance Sub-Header */}
-            {selectedGroupDetails.currentUserStatus.amount <= 0 ? (
-              <div style={{
-                backgroundColor: 'rgba(28, 194, 159, 0.08)',
-                borderRadius: '12px',
-                padding: '12px 16px',
-                borderLeft: '4px solid #1cc29f',
-                color: 'white',
-                fontSize: '13.5px',
-                fontWeight: 600,
-                textAlign: 'left'
-              }}>
-                🎉 You are all settled up in this group.
-              </div>
-            ) : (
-              <div style={{
-                backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                borderRadius: '12px',
-                padding: '12px 16px',
-                borderLeft: selectedGroupDetails.currentUserStatus.type === 'owed' ? '4px solid #1cc29f' : '4px solid #ff652f',
-                color: 'white',
-                fontSize: '13px',
-                fontWeight: 600,
-                textAlign: 'left'
-              }}>
-                {selectedGroupDetails.currentUserStatus.text.toUpperCase()}
-              </div>
+            {selectedGroupDetails?.group?.members?.filter(Boolean).length > 1 && (
+              selectedGroupDetails.currentUserStatus.amount <= 0 ? (
+                <div style={{
+                  backgroundColor: 'rgba(28, 194, 159, 0.08)',
+                  borderRadius: '12px',
+                  padding: '12px 16px',
+                  borderLeft: '4px solid #1cc29f',
+                  color: 'white',
+                  fontSize: '13.5px',
+                  fontWeight: 600,
+                  textAlign: 'left'
+                }}>
+                  🎉 You are all settled up in this group.
+                </div>
+              ) : (
+                <div style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                  borderRadius: '12px',
+                  padding: '12px 16px',
+                  borderLeft: selectedGroupDetails.currentUserStatus.type === 'owed' ? '4px solid #1cc29f' : '4px solid #ff652f',
+                  color: 'white',
+                  fontSize: '13px',
+                  fontWeight: 600,
+                  textAlign: 'left'
+                }}>
+                  {selectedGroupDetails.currentUserStatus.text.toUpperCase()}
+                </div>
+              )
             )}
 
             {/* Net Balances Summary */}
@@ -3588,66 +3590,7 @@ export default function App() {
             )}
 
             {/* Transaction Log Section */}
-            {selectedGroupDetails.currentUserStatus.amount <= 0 ? (
-              /* Custom High-Fidelity Settled Up Empty State matching second mockup image */
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: '80px 20px',
-                color: 'white',
-                fontFamily: 'var(--font-body)',
-                textAlign: 'center',
-                gap: '12px',
-                flex: 1
-              }}>
-                <span style={{ fontSize: '18px', fontWeight: 600, color: 'white' }}>
-                  You are all settled up
-                </span>
-                <span style={{ fontSize: '14px', color: '#94a3b8', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => alert("Showing settled expenses... (Demo Success)")}>
-                  Tap to show settled expenses
-                </span>
-
-                {/* Gorgeous multi-colored geometric checkmark icon matching mockup exactly! */}
-                <div style={{
-                  marginTop: '24px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center'
-                }}>
-                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
-                    {/* Left stroke of checkmark (Purple) */}
-                    <path 
-                      d="M6 12l4 4" 
-                      stroke="url(#purpleGrad)" 
-                      strokeWidth="4" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                    />
-                    {/* Right stroke of checkmark (Rose/Red) */}
-                    <path 
-                      d="M10 16l8-8" 
-                      stroke="url(#roseGrad)" 
-                      strokeWidth="4" 
-                      strokeLinecap="round" 
-                      strokeLinejoin="round" 
-                    />
-                    
-                    <defs>
-                      <linearGradient id="purpleGrad" x1="6" y1="12" x2="10" y2="16" gradientUnits="userSpaceOnUse">
-                        <stop offset="0%" stopColor="#7c3aed" />
-                        <stop offset="100%" stopColor="#4c1d95" />
-                      </linearGradient>
-                      <linearGradient id="roseGrad" x1="10" y1="16" x2="18" y2="8" gradientUnits="userSpaceOnUse">
-                        <stop offset="0%" stopColor="#e11d48" />
-                        <stop offset="100%" stopColor="#9f1239" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                </div>
-              </div>
-            ) : (selectedGroupDetails?.group?.members?.filter(Boolean).length <= 1) ? (
+            {selectedGroupDetails?.group?.members?.filter(Boolean).length <= 1 ? (
               /* Custom High-Fidelity Empty Group Card */
               <div style={{
                 backgroundColor: '#202124',
@@ -3712,6 +3655,65 @@ export default function App() {
                   }}
                 >
                   Share group link
+                </div>
+              </div>
+            ) : selectedGroupDetails.currentUserStatus.amount <= 0 && (expenses.length > 0 || settlements.length > 0) ? (
+              /* Custom High-Fidelity Settled Up Empty State matching second mockup image */
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '80px 20px',
+                color: 'white',
+                fontFamily: 'var(--font-body)',
+                textAlign: 'center',
+                gap: '12px',
+                flex: 1
+              }}>
+                <span style={{ fontSize: '18px', fontWeight: 600, color: 'white' }}>
+                  You are all settled up
+                </span>
+                <span style={{ fontSize: '14px', color: '#94a3b8', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => alert("Showing settled expenses... (Demo Success)")}>
+                  Tap to show settled expenses
+                </span>
+
+                {/* Gorgeous multi-colored geometric checkmark icon matching mockup exactly! */}
+                <div style={{
+                  marginTop: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+                    {/* Left stroke of checkmark (Purple) */}
+                    <path 
+                      d="M6 12l4 4" 
+                      stroke="url(#purpleGrad)" 
+                      strokeWidth="4" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                    />
+                    {/* Right stroke of checkmark (Rose/Red) */}
+                    <path 
+                      d="M10 16l8-8" 
+                      stroke="url(#roseGrad)" 
+                      strokeWidth="4" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                    />
+                    
+                    <defs>
+                      <linearGradient id="purpleGrad" x1="6" y1="12" x2="10" y2="16" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stopColor="#7c3aed" />
+                        <stop offset="100%" stopColor="#4c1d95" />
+                      </linearGradient>
+                      <linearGradient id="roseGrad" x1="10" y1="16" x2="18" y2="8" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stopColor="#e11d48" />
+                        <stop offset="100%" stopColor="#9f1239" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
                 </div>
               </div>
             ) : expenses.length > 0 || settlements.length > 0 ? (
