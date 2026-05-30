@@ -3594,8 +3594,8 @@ export default function App() {
                           
                           if (isExpense) {
                             const e = item.data;
-                            const wasPaidByMe = e.paidBy._id.toString() === user._id.toString();
-                            const mySplit = e.splits.find(s => s.user._id.toString() === user._id.toString());
+                            const wasPaidByMe = e.paidBy && e.paidBy._id && e.paidBy._id.toString() === user._id.toString();
+                            const mySplit = e.splits && e.splits.find(s => s.user && s.user._id && s.user._id.toString() === user._id.toString());
                             const myOwedShare = mySplit ? mySplit.owedAmount : 0;
                             
                             let shareText = '';
@@ -3686,7 +3686,7 @@ export default function App() {
                                     color: '#9aa0a6',
                                     marginTop: '2px'
                                   }}>
-                                    {wasPaidByMe ? 'You' : e.paidBy.name} paid ${e.amount.toFixed(2)}
+                                    {wasPaidByMe ? 'You' : (e.paidBy ? e.paidBy.name : 'Someone')} paid ${e.amount.toFixed(2)}
                                   </span>
                                 </div>
 
@@ -3917,7 +3917,7 @@ export default function App() {
             <div 
               onClick={() => {
                 setExpensePayer(user._id);
-                setExpenseSplits(selectedGroupDetails.group.members.map(m => m._id));
+                setExpenseSplits(selectedGroupDetails?.group?.members ? selectedGroupDetails.group.members.filter(m => m && m._id).map(m => m._id) : [user._id]);
                 setExpenseFromHome(false);
                 setShowAddExpense(true);
               }}

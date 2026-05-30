@@ -1,11 +1,11 @@
 const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
+dotenv.config();
 const { connectDB, db } = require('./db');
 const bcrypt = require('bcryptjs');
 const { OAuth2Client } = require('google-auth-library');
 
-dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 5000;

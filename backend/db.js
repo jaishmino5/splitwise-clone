@@ -2,6 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+require('dotenv').config();
 
 // Determine if we should use MongoDB or JSON database fallback
 let useMongoDB = false;
