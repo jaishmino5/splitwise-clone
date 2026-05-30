@@ -100,6 +100,7 @@ export default function App() {
   const [showAccountSelector, setShowAccountSelector] = useState(false);
   const [showAddExpense, setShowAddExpense] = useState(false);
   const [showSettleUp, setShowSettleUp] = useState(false);
+  const [settleStep, setSettleStep] = useState('select'); // 'select' or 'record'
   const [showAddGroup, setShowAddGroup] = useState(false);
   const [showAddFriend, setShowAddFriend] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -3265,6 +3266,7 @@ export default function App() {
                     setSettleAmount(primaryOwer.amount.toFixed(2));
                   }
                 }
+                setSettleStep('select');
                 setShowSettleUp(true);
               }}
               style={{
@@ -4550,78 +4552,349 @@ export default function App() {
         <div style={{
           position: 'absolute',
           top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: '#18191b',
+          zIndex: 150,
           display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 100,
-          padding: '20px'
-        }}>
-          <div className="glass-card animate-fade-in" style={{
-            width: '100%',
-            backgroundColor: 'white',
-            padding: '24px',
-            borderRadius: '20px',
-            boxShadow: 'var(--shadow-lg)'
-          }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 800, marginBottom: '20px', color: '#1e293b' }}>
-              Record a payment
-            </h3>
-
-            <form onSubmit={handleSettleUp} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div className="input-group">
-                <label className="input-label">Payer (Who Paid)</label>
-                <select 
-                  className="input-field" 
-                  value={settleFrom} 
-                  onChange={(e) => setSettleFrom(e.target.value)}
-                  required
+          flexDirection: 'column',
+          color: 'white',
+          fontFamily: 'var(--font-body)'
+        }} className="animate-fade-in">
+          
+          {settleStep === 'select' ? (
+            /* STEP 1: Select a balance to settle screen overlay */
+            <>
+              {/* Header Navigation Bar */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '16px 20px',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                backgroundColor: '#202124',
+                gap: '16px'
+              }}>
+                {/* Close X Button */}
+                <svg 
+                  onClick={() => setShowSettleUp(false)}
+                  width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ cursor: 'pointer' }}
                 >
-                  <option value="">Select payer</option>
-                  {selectedGroupDetails.group.members.map(m => (
-                    <option key={m._id} value={m._id}>{m.name}</option>
-                  ))}
-                </select>
+                  <line x1="18" y1="6" x2="6" y2="18" />
+                  <line x1="6" y1="6" x2="18" y2="18" />
+                </svg>
+                <span style={{ fontSize: '18px', fontWeight: 600 }}>Select a balance to settle</span>
               </div>
 
-              <div className="input-group">
-                <label className="input-label">Recipient (Who Received)</label>
-                <select 
-                  className="input-field" 
-                  value={settleTo} 
-                  onChange={(e) => setSettleTo(e.target.value)}
-                  required
+              {/* Scrollable content container */}
+              <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 40px 20px', display: 'flex', flexDirection: 'column', gap: '28px' }}>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                  {(() => {
+                    const debtsInvolvingMe = selectedGroupDetails.netDebts.filter(d => 
+                      d && d.from && d.to && (d.from._id === user._id || d.to._id === user._id)
+                    );
+
+                    if (debtsInvolvingMe.length === 0) {
+                      return (
+                        <div style={{
+                          backgroundColor: '#202124',
+                          borderRadius: '16px',
+                          padding: '32px 20px',
+                          textAlign: 'center',
+                          border: '1px solid rgba(255, 255, 255, 0.06)',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: '12px'
+                        }}>
+                          <div style={{
+                            width: '48px',
+                            height: '48px',
+                            borderRadius: '50%',
+                            backgroundColor: 'rgba(28, 194, 159, 0.12)',
+                            color: '#1cc29f',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: '24px'
+                          }}>
+                            ✓
+                          </div>
+                          <p style={{ color: '#e3e3e3', fontSize: '15px', fontWeight: 500, margin: 0 }}>
+                            You are all settled up in this group!
+                          </p>
+                        </div>
+                      );
+                    }
+
+                    return debtsInvolvingMe.map((d, index) => {
+                      const doesMummyOweUs = d.to._id === user._id; // Mummy owes us
+                      const name = doesMummyOweUs ? d.from.name : d.to.name;
+                      const label = doesMummyOweUs ? 'you are owed' : 'you owe';
+                      const color = doesMummyOweUs ? '#1cc29f' : '#ff652f';
+                      const amountStr = `$${d.amount.toFixed(2)}`;
+
+                      return (
+                        <div 
+                          key={index}
+                          onClick={() => {
+                            if (doesMummyOweUs) {
+                              setSettleFrom(d.from._id); // Mummy pays
+                              setSettleTo(user._id); // You receive
+                            } else {
+                              setSettleFrom(user._id); // You pay
+                              setSettleTo(d.to._id); // Recipient receives
+                            }
+                            setSettleAmount(d.amount.toFixed(2));
+                            setSettleStep('record');
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'space-between',
+                            padding: '16px 0',
+                            borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                            {/* Circular avatar with envelope icon matching mockup */}
+                            <div style={{
+                              width: '40px',
+                              height: '40px',
+                              borderRadius: '50%',
+                              backgroundColor: '#eceef1',
+                              color: '#8b95a5',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                                <polyline points="22,6 12,13 2,6" />
+                              </svg>
+                            </div>
+
+                            <span style={{ fontSize: '16px', fontWeight: 600, color: 'white' }}>
+                              {name}
+                            </span>
+                          </div>
+
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', textAlign: 'right' }}>
+                            <span style={{ fontSize: '11.5px', color: color, fontWeight: 500 }}>
+                              {label}
+                            </span>
+                            <span style={{ fontSize: '16.5px', fontWeight: 700, color: color, marginTop: '2px' }}>
+                              {amountStr}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+
+                {/* More options button */}
+                <div 
+                  onClick={() => {
+                    setSettleFrom(user._id);
+                    setSettleTo('');
+                    setSettleAmount('');
+                    setSettleStep('record');
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    alignSelf: 'flex-start',
+                    fontSize: '15.5px',
+                    fontWeight: 500,
+                    color: 'rgba(255, 255, 255, 0.7)',
+                    cursor: 'pointer',
+                    marginTop: '-8px',
+                    transition: 'color 0.2s'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.color = '#1cc29f'}
+                  onMouseOut={(e) => e.currentTarget.style.color = 'rgba(255,255,255,0.7)'}
                 >
-                  <option value="">Select recipient</option>
-                  {selectedGroupDetails.group.members.map(m => (
-                    <option key={m._id} value={m._id}>{m.name}</option>
-                  ))}
-                </select>
+                  More options
+                </div>
+
+              </div>
+            </>
+          ) : (
+            /* STEP 2: Record a payment screen overlay */
+            <>
+              {/* Header Navigation Bar */}
+              <div style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '16px 20px',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                backgroundColor: '#202124',
+                gap: '16px'
+              }}>
+                {/* Back Arrow Button */}
+                <svg 
+                  onClick={() => setSettleStep('select')}
+                  width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                  style={{ cursor: 'pointer' }}
+                >
+                  <line x1="19" y1="12" x2="5" y2="12" />
+                  <polyline points="12,19 5,12 12,5" />
+                </svg>
+                <span style={{ fontSize: '18px', fontWeight: 600 }}>Record a payment</span>
               </div>
 
-              <div className="input-group">
-                <label className="input-label">Amount Paid ($)</label>
-                <input 
-                  type="number" 
-                  step="0.01" 
-                  className="input-field" 
-                  placeholder="0.00"
-                  value={settleAmount} 
-                  onChange={(e) => setSettleAmount(e.target.value)} 
-                  required 
-                />
-              </div>
+              {/* Scrollable form content */}
+              <form onSubmit={handleSettleUp} style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 40px 20px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+                
+                {/* Visual money settlement graphic */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '16px',
+                  margin: '12px 0'
+                }}>
+                  <div style={{
+                    width: '56px',
+                    height: '56px',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(28, 194, 159, 0.12)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '24px',
+                    color: '#1cc29f',
+                    border: '1.2px solid rgba(28, 194, 159, 0.4)'
+                  }}>
+                    💸
+                  </div>
+                </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowSettleUp(false)}>
-                  Cancel
+                {/* 1. Payer selector */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13.5px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left' }}>
+                    Payer (Who Paid)
+                  </label>
+                  <select 
+                    value={settleFrom} 
+                    onChange={(e) => setSettleFrom(e.target.value)}
+                    required
+                    style={{
+                      width: '100%',
+                      backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      borderRadius: '12px',
+                      color: 'white',
+                      padding: '14px',
+                      fontSize: '15px',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="" style={{ backgroundColor: '#202124' }}>Select payer</option>
+                    {selectedGroupDetails.group.members.map(m => (
+                      <option key={m._id} value={m._id} style={{ backgroundColor: '#202124' }}>
+                        {m.name} {m._id === user._id ? ' (you)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 2. Recipient selector */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13.5px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left' }}>
+                    Recipient (Who Received)
+                  </label>
+                  <select 
+                    value={settleTo} 
+                    onChange={(e) => setSettleTo(e.target.value)}
+                    required
+                    style={{
+                      width: '100%',
+                      backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      borderRadius: '12px',
+                      color: 'white',
+                      padding: '14px',
+                      fontSize: '15px',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    <option value="" style={{ backgroundColor: '#202124' }}>Select recipient</option>
+                    {selectedGroupDetails.group.members.map(m => (
+                      <option key={m._id} value={m._id} style={{ backgroundColor: '#202124' }}>
+                        {m.name} {m._id === user._id ? ' (you)' : ''}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* 3. Amount field */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <label style={{ fontSize: '13.5px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left' }}>
+                    Amount Paid ($)
+                  </label>
+                  <div style={{ position: 'relative' }}>
+                    <span style={{
+                      position: 'absolute',
+                      left: '16px',
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      fontSize: '20px',
+                      fontWeight: 600,
+                      color: 'rgba(255,255,255,0.4)'
+                    }}>$</span>
+                    <input 
+                      type="number" 
+                      step="0.01" 
+                      placeholder="0.00"
+                      value={settleAmount} 
+                      onChange={(e) => setSettleAmount(e.target.value)} 
+                      required 
+                      style={{
+                        width: '100%',
+                        backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                        border: '1px solid rgba(255, 255, 255, 0.15)',
+                        borderRadius: '12px',
+                        color: 'white',
+                        padding: '14px 14px 14px 38px',
+                        fontSize: '18px',
+                        fontWeight: 600,
+                        outline: 'none'
+                      }}
+                    />
+                  </div>
+                </div>
+
+                {/* Submit button at the bottom */}
+                <button 
+                  type="submit"
+                  style={{
+                    backgroundColor: '#1cc29f',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '100px',
+                    padding: '14px',
+                    fontSize: '16px',
+                    fontWeight: 700,
+                    cursor: 'pointer',
+                    marginTop: '16px',
+                    boxShadow: '0 4px 12px rgba(28, 194, 159, 0.35)',
+                    transition: 'background-color 0.2s'
+                  }}
+                  onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#17a98a'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#1cc29f'}
+                >
+                  Save payment
                 </button>
-                <button type="submit" className="btn-primary" style={{ flex: 1 }}>
-                  Record
-                </button>
-              </div>
-            </form>
-          </div>
+
+              </form>
+            </>
+          )}
+
         </div>
       )}
 
