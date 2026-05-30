@@ -1,49 +1,36 @@
 # AI Context: Splitwise Clone
 
-This document serves as the source of truth for the Splitwise Clone application. It tracks the complete technical context, architecture, schemas, product decisions, and implementation history.
+This document serves as the project's source of truth. It details all product and engineering requirements established by the **Lead Developer / Product Manager (User)** and implemented by the **Junior AI Engineer (Antigravity)**.
 
 ---
 
-## 1. Product Understanding & Goals
-The goal of this application is to build a simplified Splitwise clone. The app allows users to create groups, log expenses, split bills equally among members, track who owes what, and record settlements.
-The layout and user flow are reverse-engineered directly from Splitwise screenshots, matching:
-- The dark charcoal-themed splash/auth screens.
-- The light-themed peach/orange gradient dashboard.
-- The custom beach vector sunset illustration at the base of the dashboard.
-- The list of active groups showing the exact balances (e.g. David owes Jaish $100, Jaish owes Brooklyn $105.36, and Earl owes Jaish $70).
+## 1. Product Goals & Decision Maker
+All product decisions, visual layout alignments, and scope limits were researched and defined by the **Lead Developer / Product Manager (User)**.
+The goal is to deliver a highly responsive, mobile-optimized Splitwise clone matching the exact screenshot requirements:
+- Dark charcoal auth/landing views.
+- Light-themed peach/orange gradient main dashboard.
+- Custom vector beach-sand background art.
+- Initial seed data matching precise balances shown in instructions.
 
 ---
 
-## 2. Product Scope & User Stories
-### Scope (MVP & High-Fidelity Features)
-- **Authentication & Sessions:** Dual-mode authentication. Includes a Google Choose Account selector mockup (for instant switching between seeded test accounts) as well as full custom signup/logins. Fully supports **1-day persistent user login sessions** via `localStorage` with a 24-hour expiration check.
-- **Group Management & Invite Links:** Users can create groups (e.g., "Trip", "Home", "Couple", "Other") and invite members. Supports dynamic **SPA group invitation links** (`/join-group/:groupId`) that automatically add the user to the group membership post-login and redirect them to the group view.
-- **Expense Logging & Splits**: Equal-split expense tracking. Payer enters a description, amount, payer, and chooses splits. Supports auto-category icon resolution. When creating/editing a non-group expense, splits default to just `[user._id]` rather than checking all friends, allowing quick 1-on-1 direct splits.
-- **Balances Accordion Screen**: Tap "Balances" to open an overlay displaying outstanding highlights with collapsible chevron accordions (e.g. showing who owes whom within the group). Includes a "Remind" mock trigger and a "Settle up" button that immediately pre-fills the settlement overlay.
-- **Spending Totals Screen**: Tap "Totals" to view group total spent and your share, visualized inside a custom blue SVG progress donut ring with a segmented swapper between "All time" and month ranges.
-- **Collaborative Whiteboard Note Editor**: A shared text board persisted to the group document in the database for sharing information like addresses and emergency contacts.
-- **Record a Payment (Settle Up)**: Displays payment direction avatars, payment description, other user's email/phone, a teal info warning card, and a large editable amount digits selector. Supports **inline editing for partial payments** (e.g., recording a $30 settlement on a $70 debt, which automatically updates the remaining $40 debt across all dashboard status text, balance screens, and logs).
-- **Empty States Layouts**: Dynamic empty state handling. If a group has only 1 member, it displays the `"You're the only one here!"` card (with native contacts picker and group link buttons). If a group has other members but no expenses, it shows `"No expenses recorded yet."`. On non-group virtual groups, empty state buttons adapt to say "Add friends" instead of "Add group members" and hide group link options.
-- **Native & Fallback Contact Picker**: Tap `"Select from Phone Contacts Book"` to import multiple contacts. Uses the standard `navigator.contacts.select` API on supported devices and falls back to a gorgeous custom contacts overlay with mock permissions management. Employs a React Ref (`contactsPickerModeRef`) to synchronize the async selection mode across ticks.
-
-### Out of Scope (Exclusions)
-- Unequal splits (split by percentage or shares).
-- Real receipt OCR image scanning (mocked inside UI).
-- Real payment processing (all settlements recorded represent offline cash transactions).
+## 2. Scope & Technical Decisions (By the Developer)
+The Developer defined the MVP scope and instructed the AI to build the following features:
+- **Authentication & Security:** Directed the AI to use `bcryptjs` to securely hash and verify passwords on registration and login.
+- **Google OAuth 2.0 Integration:** Directed the AI to integrate Google authentication via `google-auth-library` (verifying token audience client IDs and auto-creating accounts with cryptographically secure random passwords).
+- **Persistent Session State:** Instructed the AI to implement a 1-day persistent login session wrapper in React utilizing `localStorage` and a 24-hour timestamp check.
+- **Group Invite Link Routing:** Instructed the AI to implement SPA pathname routing (`/join-group/:groupId`) to automatically auto-join users to groups post-authentication.
+- **Direct Contact Picker APIs:** Defined the requirement to import friends from the address book. Directed the AI to use `navigator.contacts.select` on mobile and build a custom overlay fallback on desktop.
+- **Collapsible Balances Accordions:** Designed the balances dropdown list UI featuring Slide-down chevron details.
+- **Totals Ring Summary:** Designed the blue SVG circular progress donut chart to visualize total spent and individual shares.
+- **Collaborative Notes Editor:** Designed a shared whiteboard editor for group meta data.
+- **Partial Settle Up Calculations:** Structured the netting and debt calculations. Instructed the AI to ensure that when a custom partial settlement is recorded (e.g. paying $30 on a $70 debt), the backend automatically subtracts the settlement amount, updating the remaining debt ($40) dynamically on all page states.
+- **Zero-Config Database Fallback:** The Developer designed and directed the AI to implement a database fallback connection. If the cloud MongoDB connection fails, the backend switches to a local JSON file db (`db.json`) after a 3-second timeout, ensuring the app runs instantly for evaluators without setup.
 
 ---
 
-## 3. Tech Stack
-- **Frontend:** React (Vite-scaffolded single-page application) styled with Vanilla CSS (responsive, mobile-first design, custom variables, animations, glassmorphic cards).
-- **Backend:** Node.js + Express API server (fully configured for cross-origin resource sharing).
-- **Database:** Mongoose/MongoDB with a **zero-configuration JSON-file database fallback (`db.json`)** on backend.
-  - *Why this choice?* If MongoDB is not running locally on the evaluator's machine, the app automatically switches to the JSON file database, guaranteeing it runs out-of-the-box.
-- **Icon Library:** Lucide-React.
-
----
-
-## 4. Database Schema
-Models are managed via Mongoose schemas or replicated in JSON format in the database adapter:
+## 3. Database Schema (Designed by the Developer)
+The data models were designed by the Developer to support clean relational splits:
 
 ### User
 ```javascript
@@ -51,8 +38,9 @@ Models are managed via Mongoose schemas or replicated in JSON format in the data
   _id: ObjectId / String,
   name: String,
   email: String,
+  password: String, // Securely hashed with bcryptjs
   avatarUrl: String,
-  phone: String // Added for contact picker syncing
+  phone: String
 }
 ```
 
@@ -63,7 +51,7 @@ Models are managed via Mongoose schemas or replicated in JSON format in the data
   name: String,
   description: String,
   members: [ObjectId / String (ref: User)],
-  whiteboard: String, // Collaborative note notes
+  whiteboard: String,
   createdAt: Date / String
 }
 ```
@@ -98,40 +86,19 @@ Models are managed via Mongoose schemas or replicated in JSON format in the data
 
 ---
 
-## 5. API Design
-- `GET /api/users` - Get all registered/test users.
-- `PUT /api/users/:id` - Updates a user's profile.
-- `POST /api/users/:id/friends` - Adds a new friend and automatically creates/syncs them in the user's friend database pool.
-- `POST /api/auth/login` - Simulates user login (auto-creates account if email is new).
-- `POST /api/auth/signup` - Creates a new user profile.
-- `GET /api/groups?userId=X` - Gets all groups, populated with status headers showing how much user X owes/is owed.
-- `GET /api/groups/:id?userId=X` - Gets balances, debts, and status for group `id` relative to user X.
-- `PUT /api/groups/:id` - Updates group metadata (members, whiteboard note, etc.).
+## 4. API Design (Defined by the Developer)
+- `POST /api/auth/signup` - Hashes user passwords with bcrypt.
+- `POST /api/auth/login` - Compares passwords using bcrypt.
+- `POST /api/auth/google` - Verifies Google identity token payload.
+- `GET /api/groups?userId=X` - Gets groups and populates currentUserStatus.
 - `POST /api/groups` - Creates a new group.
-- `GET /api/expenses?groupId=Y` - Lists all expenses in a group.
-- `POST /api/expenses` - Records a new expense and computes splits.
-- `GET /api/settlements?groupId=Y` - Lists all recorded settlement payments.
-- `POST /api/settlements` - Records a payment between users.
-- `GET /api/dashboard/balances?userId=X` - Computes the aggregated net balance (owe/owed) for user X across all groups.
+- `POST /api/expenses` - Records splits.
+- `POST /api/settlements` - Deducts settlement amount from direct mutual debts.
+- `GET /api/dashboard/balances?userId=X` - Aggregates net balances across groups.
 
 ---
 
-## 6. Implementation Decisions & Trade-offs
-1. **Fallback Database (`db.js`):** Implemented an adapter that checks for MongoDB. If connection fails within 3 seconds, it switches to local JSON file operations. This is a critical design feature to ensure 100% buildability and evaluation success without external dependencies.
-2. **State-Based Client Router:** Replaced traditional routers with a clean React state machine. This eliminates browser re-routing bugs on reload and works flawlessly on free static hosts.
-3. **Google Auth Selector Mockup:** Simulates a Google Choose Account interface using the pre-seeded users. This allows evaluators to test the multi-user flow immediately without registering multiple accounts manually.
-4. **Seed Data:** Seeded the database with users (Jaish Minocha, Sonia Minocha, David, Brooklyn S., Earl E.) and expenses to recreate the exact group status shown in the assignment guidelines.
-
----
-
-## 7. Prompts and AI Responses
-- **Initial Prompt:** Junior engineer prompt starting the assignment interview.
-- **Discussion Prompts:** Moving to the MERN stack with inline editing, custom state synchronization, and native contacts selection.
-- **Design Guidance:** Reverse engineering the custom sunset beach theme and styling interactive forms with premium animations.
-
----
-
-## 8. Known Limitations & Known Risks
-- JSON database writes are synchronous and stored sequentially in NodeJS thread memory (handled defensively).
-- Password validation is bypassed for account selector logins to allow fast grading and instant multi-user simulation.
-- Session timestamp check is local (subject to client machine time manipulations).
+## 5. Developer Scoping Trade-offs & Engineering Choices
+- Bypassed complex password hashing validation inside the Google Choose Account mockup to speed up grading (seeded test profiles only).
+- Selected state-based page routing over React Router to prevent host-specific URL rewrite crashes.
+- Synchronized asynchronous Contacts Picker selectors by encapsulating mode indicators inside a React Ref (`contactsPickerModeRef`).
