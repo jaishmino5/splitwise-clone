@@ -3921,6 +3921,79 @@ export default function App() {
               <span style={{ color: '#cbd5e1', fontSize: '15px', fontWeight: 500, textAlign: 'left' }}>
                 Add group members
               </span>
+
+              {/* Native Contact Picker integration inside Create Group */}
+              <div 
+                onClick={async () => {
+                  if ('contacts' in navigator && 'ContactsManager' in window) {
+                    try {
+                      const props = ['name', 'tel'];
+                      const opts = { multiple: true };
+                      const picked = await navigator.contacts.select(props, opts);
+                      if (picked && picked.length > 0) {
+                        const newCheckedIds = [...groupMembers];
+                        for (const contact of picked) {
+                          const name = contact.name?.[0] || 'Unknown';
+                          const phone = contact.tel?.[0] || '';
+                          const email = `phone_${phone.replace(/\s+/g, '')}@splitwise.demo`;
+                          
+                          // Post to backend to register user
+                          const res = await fetch(`${API_BASE}/users/${user._id}/friends`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name, email })
+                          });
+                          if (res.ok) {
+                            const newFriend = await res.json();
+                            if (newFriend && newFriend._id && !newCheckedIds.includes(newFriend._id)) {
+                              newCheckedIds.push(newFriend._id);
+                            }
+                          }
+                        }
+                        setGroupMembers(newCheckedIds);
+                        await fetchDashboardData(); // Refresh UI list
+                        alert(`Successfully imported and added ${picked.length} members from your phone!`);
+                      }
+                    } catch (err) {
+                      console.log("Native Group Contact Picker failed/closed:", err);
+                    }
+                  } else {
+                    alert("Direct phone contacts fetching is supported natively on mobile browsers over secure HTTPS. For desktop/simulators, please select from the pre-seeded friends list directly below!");
+                  }
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '12px 14px',
+                  backgroundColor: 'rgba(28, 194, 159, 0.06)',
+                  border: '1px dashed rgba(28, 194, 159, 0.5)',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  marginTop: '4px',
+                  marginBottom: '6px',
+                  transition: 'all 0.2s ease',
+                  userSelect: 'none'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(28, 194, 159, 0.12)';
+                  e.currentTarget.style.borderColor = '#1cc29f';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(28, 194, 159, 0.06)';
+                  e.currentTarget.style.borderColor = 'rgba(28, 194, 159, 0.5)';
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="8.5" cy="7" r="4" />
+                  <line x1="20" y1="8" x2="20" y2="14" />
+                  <line x1="17" y1="11" x2="23" y2="11" />
+                </svg>
+                <span style={{ color: '#1cc29f', fontSize: '14.5px', fontWeight: 600 }}>
+                  Select from Phone Contacts Book
+                </span>
+              </div>
               
               <div style={{ 
                 flex: 1, 
