@@ -446,14 +446,23 @@ app.post('/api/auth/signup', async (req, res) => {
   }
 });
 
-// 2. Groups
 app.get('/api/groups', async (req, res) => {
   try {
     const currentUserId = req.query.userId;
     const groups = await db.getGroups();
 
+    // Filter groups so that a user only sees groups they are a member of
+    let filteredGroups = groups;
+    if (currentUserId) {
+      filteredGroups = groups.filter(group => 
+        group.members && group.members.some(member => 
+          member && member._id && member._id.toString() === currentUserId.toString()
+        )
+      );
+    }
+
     // Map each group to include the current user's specific status (owe/owed)
-    const groupsWithStatus = await Promise.all(groups.map(async (group) => {
+    const groupsWithStatus = await Promise.all(filteredGroups.map(async (group) => {
       const balanceData = await getGroupBalancesAndDebts(group._id, currentUserId);
       const groupObj = typeof group.toObject === 'function' ? group.toObject() : group;
       return {

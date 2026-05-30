@@ -13,10 +13,40 @@ import {
   TrendingDown,
   TrendingUp,
   CreditCard,
-  Layers
+  Layers,
+  Image as ImageIcon
 } from 'lucide-react';
 
-const API_BASE = `http://${window.location.hostname}:5000/api`;
+const API_BASE = import.meta.env.VITE_API_BASE || '/api';
+
+const formatDate = (dateVal) => {
+  if (!dateVal) return '';
+  const d = new Date(dateVal);
+  const today = new Date(2026, 4, 29); // May 29, 2026
+  if (d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate()) {
+    return "Today";
+  }
+  const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  return `${months[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+};
+
+const initialSimulatedContacts = [
+  { name: ". Pranab Roy", phone: "+919433800260" },
+  { name: "9413594618", phone: "+919413594618" },
+  { name: "9413594618", phone: "+919413594618" },
+  { name: "Aarav", phone: "+919829961643" },
+  { name: "Aasha Bhatia", phone: "+919635028757" },
+  { name: "Aau", phone: "+9111161205590" },
+  { name: "Abhiram", phone: "+919852099774" },
+  { name: "Aditi Sharma", phone: "+919876543210" },
+  { name: "Ananya Iyer", phone: "+919123456789" },
+  { name: "Divya Patel", phone: "+919871234567" },
+  { name: "Ishaan Gupta", phone: "+919812345678" },
+  { name: "Kabir Kapoor", phone: "+919567890123" },
+  { name: "Meera Sen", phone: "+919456789012" },
+  { name: "Rohan Verma", phone: "+919345678901" },
+  { name: "Siddharth Malhotra", phone: "+919234567890" }
+];
 
 export default function App() {
   // Navigation and Session State
@@ -47,6 +77,11 @@ export default function App() {
   const [friendSearchQuery, setFriendSearchQuery] = useState('');
   const [isFriendSearchActive, setIsFriendSearchActive] = useState(false);
 
+  // Contact Picker & Friends Screen States
+  const [contactsPermission, setContactsPermission] = useState(() => localStorage.getItem('splitwise_contacts_permission') || 'prompt');
+  const [searchContactQuery, setSearchContactQuery] = useState('');
+  const [showPermissionDialog, setShowPermissionDialog] = useState(false);
+
   // Form Inputs
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
@@ -69,7 +104,16 @@ export default function App() {
   // Add Group Form Inputs
   const [groupName, setGroupName] = useState('');
   const [groupDesc, setGroupDesc] = useState('');
+  const [groupType, setGroupType] = useState('trip'); // 'trip', 'home', 'couple', 'other'
   const [groupMembers, setGroupMembers] = useState([]); // Array of userIds
+  const [showTripDates, setShowTripDates] = useState(true);
+  const [tripStartDate, setTripStartDate] = useState(new Date(2026, 4, 29)); // Default to today's local time: May 29, 2026
+  const [tripEndDate, setTripEndDate] = useState(null);
+  const [showSettleUpReminders, setShowSettleUpReminders] = useState(false);
+  const [showBalanceAlert, setShowBalanceAlert] = useState(false);
+  const [activeDatePicker, setActiveDatePicker] = useState(null); // 'start', 'end', or null
+  const [pickerMonth, setPickerMonth] = useState(4); // May (0-indexed 4)
+  const [pickerYear, setPickerYear] = useState(2026);
 
   // Add Friend Form Inputs
   const [friendName, setFriendName] = useState('');
@@ -304,11 +348,22 @@ export default function App() {
 
   // Create Group Action
   const handleCreateGroup = async (e) => {
-    e.preventDefault();
+    if (e && e.preventDefault) e.preventDefault();
     if (!groupName) return;
 
     // Make sure current user is added to group members
     const finalMembers = Array.from(new Set([...groupMembers, user._id]));
+
+    let finalDesc = groupDesc || groupType;
+    if (groupType === 'trip' && showTripDates) {
+      const startStr = formatDate(tripStartDate);
+      const endStr = tripEndDate ? formatDate(tripEndDate) : '';
+      finalDesc = endStr ? `Trip • ${startStr} - ${endStr}` : `Trip • Starting ${startStr}`;
+    } else if (groupType === 'home') {
+      finalDesc = showSettleUpReminders ? "Home • Reminders Enabled" : "Home";
+    } else if (groupType === 'couple') {
+      finalDesc = showBalanceAlert ? "Couple • Balance Alert Enabled" : "Couple";
+    }
 
     try {
       const res = await fetch(`${API_BASE}/groups`, {
@@ -316,7 +371,7 @@ export default function App() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: groupName,
-          description: groupDesc,
+          description: finalDesc,
           members: finalMembers
         })
       });
@@ -324,7 +379,13 @@ export default function App() {
         setShowAddGroup(false);
         setGroupName('');
         setGroupDesc('');
+        setGroupType('trip');
         setGroupMembers([]);
+        setTripStartDate(new Date(2026, 4, 29));
+        setTripEndDate(null);
+        setShowTripDates(true);
+        setShowSettleUpReminders(false);
+        setShowBalanceAlert(false);
         await fetchDashboardData();
       } else {
         alert("Failed to create group");
@@ -358,6 +419,104 @@ export default function App() {
       }
     } catch (err) {
       console.error("Error adding friend:", err);
+    }
+  };
+
+  const handleOpenAddFriend = async () => {
+    // If Contact Picker API is supported natively, immediately trigger it!
+    if ('contacts' in navigator && 'ContactsManager' in window) {
+      try {
+        const props = ['name', 'tel'];
+        const opts = { multiple: true };
+        const picked = await navigator.contacts.select(props, opts);
+        if (picked && picked.length > 0) {
+          for (const contact of picked) {
+            const name = contact.name?.[0] || 'Unknown';
+            const phone = contact.tel?.[0] || '';
+            const email = `phone_${phone.replace(/\s+/g, '')}@splitwise.demo`;
+            
+            await fetch(`${API_BASE}/users/${user._id}/friends`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name, email })
+            });
+          }
+          await fetchDashboardData();
+          alert(`Successfully imported ${picked.length} friends from your phone!`);
+          return; // Done, no need to open fallback screen!
+        }
+      } catch (err) {
+        console.log("Native Contact Picker closed/failed, showing fallback view:", err);
+      }
+    }
+
+    // Fallback path (Desktop or unsupported or closed picker):
+    setShowAddFriend(true);
+    if (contactsPermission === 'prompt') {
+      setShowPermissionDialog(true);
+    }
+  };
+
+  const handleAllowContacts = async () => {
+    localStorage.setItem('splitwise_contacts_permission', 'granted');
+    setContactsPermission('granted');
+    setShowPermissionDialog(false);
+    
+    // Check if real navigator.contacts is supported
+    if ('contacts' in navigator && 'ContactsManager' in window) {
+      try {
+        const props = ['name', 'tel'];
+        const opts = { multiple: true };
+        const picked = await navigator.contacts.select(props, opts);
+        if (picked && picked.length > 0) {
+          for (const contact of picked) {
+            const name = contact.name?.[0] || 'Unknown';
+            const phone = contact.tel?.[0] || '';
+            const email = `phone_${phone.replace(/\s+/g, '')}@splitwise.demo`;
+            
+            await fetch(`${API_BASE}/users/${user._id}/friends`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ name, email })
+            });
+          }
+          await fetchDashboardData();
+          setShowAddFriend(false);
+          alert(`Successfully imported ${picked.length} contacts!`);
+        }
+      } catch (err) {
+        console.error("Contacts API error:", err);
+      }
+    }
+  };
+
+  const handleDenyContacts = () => {
+    localStorage.setItem('splitwise_contacts_permission', 'denied');
+    setContactsPermission('denied');
+    setShowPermissionDialog(false);
+  };
+
+  const handleCreateFriendDirect = async (name, phone = '') => {
+    try {
+      const emailToUse = phone ? `phone_${phone.replace(/\s+/g, '')}@splitwise.demo` : `contact_${Date.now()}_${Math.random().toString(36).substring(2,7)}@splitwise.demo`;
+      const res = await fetch(`${API_BASE}/users/${user._id}/friends`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name,
+          email: emailToUse
+        })
+      });
+      if (res.ok) {
+        setShowAddFriend(false);
+        setSearchContactQuery('');
+        await fetchDashboardData();
+      } else {
+        const data = await res.json();
+        alert(data.error || "Failed to add friend");
+      }
+    } catch (err) {
+      console.error("Error creating friend directly:", err);
     }
   };
 
@@ -514,11 +673,11 @@ export default function App() {
       );
     }
 
-    // Plane icon for trips or jaish (matches user screenshot)
-    if (lname.includes('jaish') || lname.includes('beach') || lname.includes('trip') || lname.includes('travel') || lname.includes('vacation')) {
+    // Plane icon for trips, travel, manali, jaish (matches user screenshot with beautiful crimson red gradient)
+    if (lname.includes('manali') || lname.includes('jaish') || lname.includes('beach') || lname.includes('trip') || lname.includes('travel') || lname.includes('vacation')) {
       return (
         <div style={{
-          background: 'linear-gradient(135deg, #1f9c87 0%, #157968 100%)',
+          background: 'linear-gradient(135deg, #a8203c 0%, #5d0f1e 100%)',
           width: '54px',
           height: '54px',
           borderRadius: '14px',
@@ -529,6 +688,26 @@ export default function App() {
         }}>
           <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5S19 4 17.5 5.5L14 9 5.8 7.2 4.2 8.8l8 4.7-4 4-2.8-.7L4 18.2l3.5 1.3 1.3 3.5 1.4-1.4-.7-2.8 4-4 4.7 8 1.6-1.6z" />
+          </svg>
+        </div>
+      );
+    }
+
+    // Couple icon with premium violet gradient
+    if (lname.includes('couple') || lname.includes('partner') || lname.includes('love') || lname.includes('relationship')) {
+      return (
+        <div style={{
+          background: 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)',
+          width: '54px',
+          height: '54px',
+          borderRadius: '14px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexShrink: 0
+        }}>
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
           </svg>
         </div>
       );
@@ -553,6 +732,11 @@ export default function App() {
       </div>
     );
   };
+
+  const filteredContacts = initialSimulatedContacts.filter(c => 
+    c.name.toLowerCase().includes(searchContactQuery.toLowerCase()) ||
+    c.phone.toLowerCase().includes(searchContactQuery.toLowerCase())
+  );
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column', width: '100%', overflow: 'hidden' }}>
@@ -1046,8 +1230,8 @@ export default function App() {
               </div>
 
               {/* Beach scene SVG */}
-              <div style={{ width: 'calc(100% + 48px)', margin: 'auto -24px 0 -24px', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', zIndex: 1 }}>
-                <svg viewBox="0 0 400 240" width="100%" height="200" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ maxHeight: '22vh', display: 'block' }}>
+              <div style={{ width: 'calc(100% + 48px)', height: '28vh', margin: 'auto -24px -16px -24px', position: 'relative', zIndex: 1 }}>
+                <svg viewBox="0 0 400 240" width="100%" height="100%" preserveAspectRatio="xMidYMax slice" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%', display: 'block' }}>
                   {/* Sky background is transparent to show page gradient */}
                   <circle cx="200" cy="140" r="40" fill="#ff5a36" />
                   
@@ -1195,8 +1379,8 @@ export default function App() {
               </div>
 
               {/* House/Grocery SVG */}
-              <div style={{ width: 'calc(100% + 48px)', margin: 'auto -24px 0 -24px', display: 'flex', justifyContent: 'center', alignItems: 'flex-end', zIndex: 1 }}>
-                <svg viewBox="0 0 400 220" width="100%" height="180" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ maxHeight: '22vh', display: 'block' }}>
+              <div style={{ width: 'calc(100% + 48px)', height: '26vh', margin: 'auto -24px -16px -24px', position: 'relative', zIndex: 1 }}>
+                <svg viewBox="0 0 400 220" width="100%" height="100%" preserveAspectRatio="xMidYMax slice" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%', display: 'block' }}>
                   {/* Background is transparent to show page gradient */}
                   
                   <path d="M-50 220 Q150 140 450 220 Z" fill="#9cdbc8" />
@@ -1295,8 +1479,8 @@ export default function App() {
               </div>
 
               {/* Table SVG area with overlay card */}
-              <div style={{ width: 'calc(100% + 48px)', margin: '20px -24px 0 -24px', position: 'relative', minHeight: '260px', zIndex: 1 }}>
-                <svg viewBox="0 0 400 240" width="100%" height="240" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ zIndex: 1, display: 'block' }}>
+              <div style={{ width: 'calc(100% + 48px)', height: '28vh', minHeight: '260px', margin: '20px -24px -16px -24px', position: 'relative', zIndex: 1 }}>
+                <svg viewBox="0 0 400 240" width="100%" height="100%" preserveAspectRatio="xMidYMax slice" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ width: '100%', height: '100%', display: 'block', zIndex: 1 }}>
                   {/* Background is transparent to show page gradient */}
 
                   <g opacity="0.12">
@@ -1517,7 +1701,16 @@ export default function App() {
 
           {/* Navigation Dots & Skip Tour Link (only steps 1-3) */}
           {tutorialStep < 4 && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', marginTop: '16px', zIndex: 10 }}>
+            <div style={{ 
+              position: 'absolute', 
+              bottom: '16px', 
+              left: 0, 
+              right: 0, 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'center', 
+              zIndex: 20 
+            }}>
               {/* Dots */}
               <div style={{ display: 'flex', gap: '8px' }}>
                 <div 
@@ -1582,58 +1775,43 @@ export default function App() {
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: '#18191b',
-          padding: '24px 20px 80px 20px',
-          overflowY: 'auto',
           position: 'relative',
-          height: '100%'
+          height: '100%',
+          overflow: 'hidden'
         }} className="animate-fade-in">
           
+          {/* Scrollable Content Container */}
+          <div style={{
+            flex: 1,
+            overflowY: 'auto',
+            padding: '24px 20px 80px 20px',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+          
           {/* Header Actions (Search & Add Group / Friend) */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '20px', marginBottom: '16px' }}>
-            {isFriendSearchActive && activeTab === 'friends' && (
-              <input 
-                type="text" 
-                placeholder="Search friends..." 
-                value={friendSearchQuery}
-                onChange={(e) => setFriendSearchQuery(e.target.value)}
-                style={{
-                  backgroundColor: '#22252a',
-                  border: '1px solid #3c434a',
-                  borderRadius: '10px',
-                  color: 'white',
-                  padding: '6px 12px',
-                  fontSize: '14px',
-                  flex: 1,
-                  outline: 'none'
-                }}
-              />
-            )}
-            
-            {/* Search Icon */}
-            <svg 
-              width="22" 
-              height="22" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="#cbd5e1" 
-              strokeWidth="2.5" 
-              strokeLinecap="round" 
-              strokeLinejoin="round" 
-              style={{ cursor: 'pointer' }}
-              onClick={() => {
-                if (activeTab === 'friends') {
-                  setIsFriendSearchActive(!isFriendSearchActive);
-                  if (isFriendSearchActive) setFriendSearchQuery('');
-                }
-              }}
-            >
-              <circle cx="11" cy="11" r="8" />
-              <line x1="21" y1="21" x2="16.65" y2="16.65" />
-            </svg>
-            
-            {/* Add Icon (Add Friend or Add Group based on tab) */}
-            {activeTab === 'friends' ? (
-              /* Add Friend Icon */
+          {(activeTab === 'groups' || activeTab === 'friends') && (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: '20px', marginBottom: '16px' }}>
+              {isFriendSearchActive && activeTab === 'friends' && (
+                <input 
+                  type="text" 
+                  placeholder="Search friends..." 
+                  value={friendSearchQuery}
+                  onChange={(e) => setFriendSearchQuery(e.target.value)}
+                  style={{
+                    backgroundColor: '#22252a',
+                    border: '1px solid #3c434a',
+                    borderRadius: '10px',
+                    color: 'white',
+                    padding: '6px 12px',
+                    fontSize: '14px',
+                    flex: 1,
+                    outline: 'none'
+                  }}
+                />
+              )}
+              
+              {/* Search Icon */}
               <svg 
                 width="22" 
                 height="22" 
@@ -1644,156 +1822,299 @@ export default function App() {
                 strokeLinecap="round" 
                 strokeLinejoin="round" 
                 style={{ cursor: 'pointer' }}
-                onClick={() => setShowAddFriend(true)}
+                onClick={() => {
+                  if (activeTab === 'friends') {
+                    setIsFriendSearchActive(!isFriendSearchActive);
+                    if (isFriendSearchActive) setFriendSearchQuery('');
+                  }
+                }}
               >
-                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="8.5" cy="7" r="4" />
-                <line x1="20" y1="8" x2="20" y2="14" />
-                <line x1="17" y1="11" x2="23" y2="11" />
+                <circle cx="11" cy="11" r="8" />
+                <line x1="21" y1="21" x2="16.65" y2="16.65" />
               </svg>
-            ) : (
-              /* Add Group Icon */
-              <svg 
-                width="22" 
-                height="22" 
-                viewBox="0 0 24 24" 
-                fill="none" 
-                stroke="#cbd5e1" 
-                strokeWidth="2.5" 
-                strokeLinecap="round" 
-                strokeLinejoin="round" 
-                style={{ cursor: 'pointer' }} 
-                onClick={() => setShowAddGroup(true)}
-              >
-                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                <circle cx="8.5" cy="7" r="4" />
-                <line x1="20" y1="8" x2="20" y2="14" />
-                <line x1="17" y1="11" x2="23" y2="11" />
-              </svg>
-            )}
-          </div>
+              
+              {/* Add Icon (Add Friend or Add Group based on tab) */}
+              {activeTab === 'friends' ? (
+                /* Add Friend Icon */
+                <svg 
+                  width="22" 
+                  height="22" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="#cbd5e1" 
+                  strokeWidth="2.5" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  style={{ cursor: 'pointer' }}
+                  onClick={handleOpenAddFriend}
+                >
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="8.5" cy="7" r="4" />
+                  <line x1="20" y1="8" x2="20" y2="14" />
+                  <line x1="17" y1="11" x2="23" y2="11" />
+                </svg>
+              ) : (
+                /* Add Group Icon */
+                <svg 
+                  width="22" 
+                  height="22" 
+                  viewBox="0 0 24 24" 
+                  fill="none" 
+                  stroke="#cbd5e1" 
+                  strokeWidth="2.5" 
+                  strokeLinecap="round" 
+                  strokeLinejoin="round" 
+                  style={{ cursor: 'pointer' }} 
+                  onClick={() => setShowAddGroup(true)}
+                >
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="8.5" cy="7" r="4" />
+                  <line x1="20" y1="8" x2="20" y2="14" />
+                  <line x1="17" y1="11" x2="23" y2="11" />
+                </svg>
+              )}
+            </div>
+          )}
 
           {/* Status Header Bar */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
-            <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600, color: 'white', margin: 0 }}>
-              {dashboardBalances.netBalance === 0 ? "You are all settled up!" :
-               dashboardBalances.netBalance > 0 ? `Overall, you are owed $${dashboardBalances.netBalance.toFixed(2)}` :
-               `Overall, you owe $${Math.abs(dashboardBalances.netBalance).toFixed(2)}`}
-            </h2>
-            {/* Sliders filter icon */}
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }}>
-              <line x1="4" y1="21" x2="4" y2="14" />
-              <line x1="4" y1="10" x2="4" y2="3" />
-              <line x1="12" y1="21" x2="12" y2="12" />
-              <line x1="12" y1="8" x2="12" y2="3" />
-              <line x1="20" y1="21" x2="20" y2="16" />
-              <line x1="20" y1="12" x2="20" y2="3" />
-              <line x1="1" y1="14" x2="7" y2="14" />
-              <line x1="9" y1="8" x2="15" y2="8" />
-              <line x1="17" y1="16" x2="23" y2="16" />
-            </svg>
-          </div>
+          {(activeTab === 'groups' || activeTab === 'friends') && !(activeTab === 'groups' && groups.length === 0) && (
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <h2 style={{ fontFamily: 'var(--font-display)', fontSize: '20px', fontWeight: 600, color: 'white', margin: 0 }}>
+                {dashboardBalances.netBalance === 0 ? "You are all settled up!" :
+                 dashboardBalances.netBalance > 0 ? `Overall, you are owed $${dashboardBalances.netBalance.toFixed(2)}` :
+                 `Overall, you owe $${Math.abs(dashboardBalances.netBalance).toFixed(2)}`}
+              </h2>
+              {/* Sliders filter icon */}
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }}>
+                <line x1="4" y1="21" x2="4" y2="14" />
+                <line x1="4" y1="10" x2="4" y2="3" />
+                <line x1="12" y1="21" x2="12" y2="12" />
+                <line x1="12" y1="8" x2="12" y2="3" />
+                <line x1="20" y1="21" x2="20" y2="16" />
+                <line x1="20" y1="12" x2="20" y2="3" />
+                <line x1="1" y1="14" x2="7" y2="14" />
+                <line x1="9" y1="8" x2="15" y2="8" />
+                <line x1="17" y1="16" x2="23" y2="16" />
+              </svg>
+            </div>
+          )}
 
           {/* Main Tab Content */}
           {activeTab === 'groups' && (
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: '4px' }} className="animate-fade-in">
-              {/* Groups List */}
-              {groups.map(g => {
-                const status = g.currentUserStatus;
-                const type = status ? status.type : 'settled';
-                const amount = status ? status.amount : 0;
-                
-                return (
-                  <div 
-                    key={g._id}
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '20px 20px 40px 20px', gap: '4px' }} className="animate-fade-in">
+              {groups.length === 0 ? (
+                /* Empty state matching the user's screenshot exactly */
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', flex: 1, textAlign: 'center' }}>
+                  {/* Dynamic Welcome text aligned at the top */}
+                  <h3 style={{
+                    fontFamily: 'var(--font-display)',
+                    fontSize: '22px',
+                    fontWeight: 500,
+                    color: 'white',
+                    marginBottom: '36px',
+                    marginTop: '20px',
+                    textAlign: 'center',
+                    width: '100%',
+                    letterSpacing: '-0.3px'
+                  }}>
+                    Welcome to Splitwise, {user.name ? user.name.split(' ')[0] : 'Sonia'}!
+                  </h3>
+
+                  {/* Handshake Illustration (Direct Original Image Asset) */}
+                  <div style={{ position: 'relative', width: '210px', height: '210px', marginBottom: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <img 
+                      src="/handshake.png" 
+                      alt="Welcome to Splitwise" 
+                      style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        objectFit: 'contain',
+                        display: 'block'
+                      }} 
+                    />
+                  </div>
+
+                  {/* Empty state text */}
+                  <p style={{
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '15px',
+                    color: '#94a3b8',
+                    lineHeight: '1.45',
+                    maxWidth: '280px',
+                    margin: '0 auto 28px auto',
+                    textAlign: 'center',
+                    fontWeight: 400
+                  }}>
+                    Splitwise groups you create or are added to will show here.
+                  </p>
+
+                  {/* Outlined Start a New Group Button */}
+                  <button 
+                    onClick={() => setShowAddGroup(true)}
                     style={{
+                      background: 'transparent',
+                      border: '1.2px solid rgba(255, 255, 255, 0.3)',
+                      borderRadius: '8px',
+                      padding: '12px 24px',
                       display: 'flex',
                       alignItems: 'center',
-                      padding: '12px 0',
+                      gap: '10px',
                       cursor: 'pointer',
-                      borderBottom: '1.5px solid #22252a'
+                      transition: 'all 0.25s ease',
+                      outline: 'none'
                     }}
-                    onClick={() => {
-                      setSelectedGroupId(g._id);
-                      setPage('group-details');
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#1cc29f';
+                      e.currentTarget.style.backgroundColor = 'rgba(28, 194, 159, 0.05)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                      e.currentTarget.style.backgroundColor = 'transparent';
                     }}
                   >
-                    {getGroupIcon(g.name)}
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255, 255, 255, 0.9)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <circle cx="8.5" cy="7" r="4" />
+                      <line x1="20" y1="8" x2="20" y2="14" />
+                      <line x1="17" y1="11" x2="23" y2="11" />
+                    </svg>
+                    <span style={{ color: 'white', fontSize: '15px', fontWeight: 500 }}>Start a new group</span>
+                  </button>
+                </div>
+              ) : (
+                /* Groups List */
+                <>
+                  {groups.map(g => {
+                    const status = g.currentUserStatus;
+                    const type = status ? status.type : 'settled';
+                    const amount = status ? status.amount : 0;
                     
-                    <div style={{ flex: 1, marginLeft: '16px', display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
-                      <span style={{ fontSize: '16px', fontWeight: 600, color: 'white' }}>{g.name}</span>
-                      <span style={{ 
-                        fontSize: '14px', 
-                        color: type === 'owed' ? '#1cc29f' : type === 'owe' ? '#ff652f' : '#94a3b8',
-                        marginTop: '2px'
-                      }}>
-                        {type === 'owed' ? `you are owed $${amount.toFixed(2)}` : 
-                         type === 'owe' ? `you owe $${amount.toFixed(2)}` : 'no expenses'}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+                    return (
+                      <div 
+                        key={g._id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '12px 0',
+                          cursor: 'pointer',
+                          borderBottom: '1.5px solid #22252a'
+                        }}
+                        onClick={() => {
+                          setSelectedGroupId(g._id);
+                          setPage('group-details');
+                        }}
+                      >
+                        {getGroupIcon(g.name)}
+                        
+                        <div style={{ flex: 1, marginLeft: '16px', display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                          <span style={{ fontSize: '16px', fontWeight: 600, color: 'white' }}>{g.name}</span>
+                          <span style={{ 
+                            fontSize: '14px', 
+                            color: type === 'owed' ? '#1cc29f' : type === 'owe' ? '#ff652f' : '#94a3b8',
+                            marginTop: '2px'
+                          }}>
+                            {type === 'owed' ? `you are owed $${amount.toFixed(2)}` : 
+                             type === 'owe' ? `you owe $${amount.toFixed(2)}` : 'no expenses'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
 
-              {/* Start a New Group Button */}
-              <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px', marginBottom: '24px' }}>
-                <button 
-                  onClick={() => setShowAddGroup(true)}
-                  style={{
-                    background: 'transparent',
-                    border: '1.5px solid #1cc29f',
-                    borderRadius: '8px',
-                    color: '#1cc29f',
-                    padding: '10px 20px',
-                    fontSize: '15px',
-                    fontWeight: 600,
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    cursor: 'pointer'
-                  }}
-                >
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
-                    <circle cx="8.5" cy="7" r="4" />
-                    <line x1="20" y1="8" x2="20" y2="14" />
-                    <line x1="17" y1="11" x2="23" y2="11" />
-                  </svg>
-                  Start a new group
-                </button>
-              </div>
+                  {/* Start a New Group Button */}
+                  <div style={{ display: 'flex', justifyContent: 'center', marginTop: '24px', marginBottom: '24px' }}>
+                    <button 
+                      onClick={() => setShowAddGroup(true)}
+                      style={{
+                        background: 'transparent',
+                        border: '1.5px solid #1cc29f',
+                        borderRadius: '8px',
+                        color: '#1cc29f',
+                        padding: '10px 20px',
+                        fontSize: '15px',
+                        fontWeight: 600,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        cursor: 'pointer'
+                      }}
+                    >
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                        <circle cx="8.5" cy="7" r="4" />
+                        <line x1="20" y1="8" x2="20" y2="14" />
+                        <line x1="17" y1="11" x2="23" y2="11" />
+                      </svg>
+                      Start a new group
+                    </button>
+                  </div>
+                </>
+              )}
             </div>
           )}
 
           {activeTab === 'friends' && (
             <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }} className="animate-fade-in">
               {friends.length === 0 ? (
-                /* Empty state */
+                /* Empty state matching the user's screenshot exactly */
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '40px 20px', textAlign: 'center' }}>
-                  <span style={{ fontSize: '48px', marginBottom: '16px' }}>👥</span>
-                  <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'white', marginBottom: '8px' }}>No friends added yet</h3>
-                  <p style={{ fontSize: '14px', color: '#cbd5e1', marginBottom: '24px' }}>Add friends to split group expenses or individual IOUs!</p>
+                  {/* Handshake Illustration (Direct Original Image Asset placed in center) */}
+                  <div style={{ position: 'relative', width: '210px', height: '210px', marginBottom: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <img 
+                      src="/handshake.png" 
+                      alt="Welcome to Splitwise" 
+                      style={{ 
+                        width: '100%', 
+                        height: '100%', 
+                        objectFit: 'contain',
+                        display: 'block'
+                      }} 
+                    />
+                  </div>
+
+                  {/* Empty state text */}
+                  <h3 style={{
+                    fontFamily: 'var(--font-body)',
+                    fontSize: '18px',
+                    fontWeight: 400,
+                    color: '#9aa0a6',
+                    marginTop: '0px',
+                    marginBottom: '24px',
+                    textAlign: 'center',
+                    width: '100%'
+                  }}>
+                    No friends to show.
+                  </h3>
                   
                   {/* Bordered Add Friends Button (Teal Outline) */}
                   <button 
-                    onClick={() => setShowAddFriend(true)}
+                    onClick={handleOpenAddFriend}
                     style={{
-                      border: '1.5px solid #1cc29f',
+                      border: '1.2px solid rgba(28, 194, 159, 0.5)',
                       background: 'transparent',
                       borderRadius: '8px',
                       color: '#bce8e1',
-                      padding: '10px 24px',
-                      fontSize: '14px',
-                      fontWeight: 600,
+                      padding: '11px 24px',
+                      fontSize: '15px',
+                      fontWeight: 500,
                       cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
                       gap: '8px',
-                      outline: 'none'
+                      outline: 'none',
+                      transition: 'all 0.25s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = '#1cc29f';
+                      e.currentTarget.style.backgroundColor = 'rgba(28, 194, 159, 0.05)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(28, 194, 159, 0.5)';
+                      e.currentTarget.style.backgroundColor = 'transparent';
                     }}
                   >
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                       <circle cx="8.5" cy="7" r="4" />
                       <line x1="20" y1="8" x2="20" y2="14" />
@@ -1856,7 +2177,7 @@ export default function App() {
                   
                   {/* Bordered Add Friends Button (Teal Outline) */}
                   <button 
-                    onClick={() => setShowAddFriend(true)}
+                    onClick={handleOpenAddFriend}
                     style={{
                       border: '1.5px solid #1cc29f',
                       background: 'transparent',
@@ -1888,10 +2209,163 @@ export default function App() {
           )}
 
           {activeTab === 'activity' && (
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '40px 20px', textAlign: 'center' }} className="animate-fade-in">
-              <span style={{ fontSize: '48px', marginBottom: '16px' }}>📈</span>
-              <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'white', marginBottom: '8px' }}>No recent activity</h3>
-              <p style={{ fontSize: '14px', color: '#cbd5e1' }}>All group expenses, settlement records, and edits will appear here.</p>
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '10px 0 20px 0', backgroundColor: '#18191b' }} className="animate-fade-in">
+              {/* Activity Header with Title and Search */}
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', padding: '0 20px' }}>
+                <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 700, color: 'white', margin: 0 }}>
+                  Activity
+                </h1>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }}>
+                  <circle cx="11" cy="11" r="8" />
+                  <line x1="21" y1="21" x2="16.65" y2="16.65" />
+                </svg>
+              </div>
+
+              {/* Activity List */}
+              <div style={{ flex: 1, overflowY: 'auto' }}>
+                {groups.length === 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '80%', padding: '40px 20px', textAlign: 'center' }}>
+                    <span style={{ fontSize: '48px', marginBottom: '16px' }}>📈</span>
+                    <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'white', marginBottom: '8px' }}>No recent activity</h3>
+                    <p style={{ fontSize: '14px', color: '#cbd5e1' }}>All group expenses, settlement records, and edits will appear here.</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column' }}>
+                    {/* Sort groups by createdAt (newest first) to simulate real activity */}
+                    {[...groups].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).map(g => {
+                      const lname = g.name.toLowerCase();
+                      const desc = (g.description || '').toLowerCase();
+                      
+                      let avatarBg = 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)'; // default other
+                      let categorySvg = (
+                        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                          <line x1="8" y1="6" x2="21" y2="6" />
+                          <line x1="8" y1="12" x2="21" y2="12" />
+                          <line x1="8" y1="18" x2="21" y2="18" />
+                          <line x1="3" y1="6" x2="3" y2="6" strokeWidth="3" />
+                          <line x1="3" y1="12" x2="3" y2="12" strokeWidth="3" />
+                          <line x1="3" y1="18" x2="3" y2="18" strokeWidth="3" />
+                        </svg>
+                      );
+                      
+                      if (lname.includes('manali') || lname.includes('jaish') || lname.includes('beach') || lname.includes('trip') || lname.includes('travel') || lname.includes('vacation') || desc.includes('trip')) {
+                        avatarBg = 'linear-gradient(135deg, #a8203c 0%, #5d0f1e 100%)'; // Crimson Red gradient
+                        categorySvg = (
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5S19 4 17.5 5.5L14 9 5.8 7.2 4.2 8.8l8 4.7-4 4-2.8-.7L4 18.2l3.5 1.3 1.3 3.5 1.4-1.4-.7-2.8 4-4 4.7 8 1.6-1.6z" />
+                          </svg>
+                        );
+                      } else if (lname.includes('house') || lname.includes('home') || lname.includes('room') || lname.includes('rent') || lname.includes('flat') || lname.includes('apartment') || lname.includes('bill') || desc.includes('home')) {
+                        avatarBg = 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)'; // Orange gradient
+                        categorySvg = (
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                            <polyline points="9 22 9 12 15 12 15 22" />
+                          </svg>
+                        );
+                      } else if (lname.includes('couple') || lname.includes('partner') || lname.includes('love') || lname.includes('relationship') || desc.includes('couple')) {
+                        avatarBg = 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)'; // Purple gradient
+                        categorySvg = (
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                          </svg>
+                        );
+                      }
+                      
+                      const formatActivityTime = (dateVal) => {
+                        if (!dateVal) return "Today, 5:05 pm";
+                        const d = new Date(dateVal);
+                        if (isNaN(d.getTime())) return "Today, 5:05 pm";
+                        const today = new Date();
+                        let dayStr = '';
+                        if (d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate()) {
+                          dayStr = "Today";
+                        } else if (d.getFullYear() === today.getFullYear() && d.getMonth() === today.getMonth() && d.getDate() === today.getDate() - 1) {
+                          dayStr = "Yesterday";
+                        } else {
+                          const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+                          dayStr = `${months[d.getMonth()]} ${d.getDate()}`;
+                        }
+                        
+                        let hours = d.getHours();
+                        const minutes = d.getMinutes().toString().padStart(2, '0');
+                        const ampm = hours >= 12 ? 'pm' : 'am';
+                        hours = hours % 12;
+                        hours = hours ? hours : 12;
+                        return `${dayStr}, ${hours}:${minutes} ${ampm}`;
+                      };
+
+                      return (
+                        <div 
+                          key={g._id}
+                          onClick={() => {
+                            setSelectedGroupId(g._id);
+                            fetchGroupDetails(g._id);
+                            setPage('group-details');
+                          }}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '16px',
+                            padding: '14px 20px',
+                            borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                            cursor: 'pointer',
+                            userSelect: 'none'
+                          }}
+                        >
+                          {/* Left Icon with Overlapping User Avatar */}
+                          <div style={{ position: 'relative', width: '44px', height: '44px', flexShrink: 0 }}>
+                            <div style={{
+                              width: '44px',
+                              height: '44px',
+                              borderRadius: '10px',
+                              background: avatarBg,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              overflow: 'hidden'
+                            }}>
+                              {categorySvg}
+                            </div>
+
+                            {/* Small Overlapping Circle Avatar */}
+                            <div style={{
+                              position: 'absolute',
+                              bottom: '-4px',
+                              right: '-4px',
+                              width: '20px',
+                              height: '20px',
+                              borderRadius: '50%',
+                              border: '2px solid #18191b',
+                              overflow: 'hidden',
+                              backgroundColor: '#202124',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center'
+                            }}>
+                              <img 
+                                src={user.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${user.name}`} 
+                                alt="User" 
+                                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                              />
+                            </div>
+                          </div>
+
+                          {/* Right Description Text Block */}
+                          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left' }}>
+                            <span style={{ color: 'white', fontSize: '15px', lineHeight: '1.4' }}>
+                              <strong>You</strong> created the group <strong style={{ fontWeight: 600 }}>“{g.name}”</strong>.
+                            </span>
+                            <span style={{ fontSize: '12.5px', color: '#9aa0a6', marginTop: '3px' }}>
+                              {formatActivityTime(g.createdAt)}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
@@ -2187,298 +2661,662 @@ export default function App() {
               </div>
             </div>
           )}
+          </div>
 
-          {/* Floating Action Button (Add expense) - show on Groups or Friends tab */}
-          {(activeTab === 'groups' || activeTab === 'friends') && (
-            <button 
-              onClick={handleGeneralAddExpenseClick}
-              style={{
-                position: 'absolute',
-                bottom: '90px',
-                right: '20px',
-                backgroundColor: '#1cc29f',
-                color: 'white',
-                border: 'none',
-                borderRadius: '30px',
-                padding: '12px 24px',
-                fontSize: '15px',
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '8px',
-                boxShadow: '0 4px 15px rgba(28, 194, 159, 0.4)',
-                cursor: 'pointer',
-                zIndex: 10
-              }}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <rect x="4" y="2" width="16" height="20" rx="2" ry="2" />
-                <line x1="9" y1="22" x2="9" y2="16" />
-                <line x1="8" y1="6" x2="16" y2="6" />
-                <line x1="8" y1="10" x2="16" y2="10" />
-                <line x1="8" y1="14" x2="16" y2="14" />
-              </svg>
-              Add expense
-            </button>
+          {/* Floating Actions Stack - show on Groups, Friends or Activity tabs */}
+          {(activeTab === 'groups' || activeTab === 'friends' || activeTab === 'activity') && 
+           !(activeTab === 'friends' && friends.length === 0) && 
+           !(activeTab === 'groups' && groups.length === 0) && (
+            <div style={{
+              position: 'absolute',
+              bottom: '90px',
+              right: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'flex-end',
+              gap: '10px',
+              zIndex: 50
+            }}>
+              {/* 1. Scan Button */}
+              <div 
+                onClick={() => alert("Initializing Splitwise Receipt Scan OCR... (Pro Simulation)")}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  backgroundColor: '#2a2c2f',
+                  border: '1.2px solid rgba(255, 255, 255, 0.18)',
+                  borderRadius: '20px',
+                  padding: '8px 18px',
+                  color: 'white',
+                  fontSize: '14px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+                Scan
+              </div>
+
+              {/* 2. Add Expense Button */}
+              <div 
+                onClick={handleGeneralAddExpenseClick}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  backgroundColor: '#1cc29f',
+                  borderRadius: '24px',
+                  padding: '12px 24px',
+                  color: 'white',
+                  fontSize: '15px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  boxShadow: '0 6px 16px rgba(0,0,0,0.35)',
+                  transition: 'all 0.2s ease'
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                  <line x1="9" y1="9" x2="15" y2="9" />
+                  <line x1="9" y1="13" x2="15" y2="13" />
+                  <line x1="9" y1="17" x2="15" y2="17" />
+                </svg>
+                Add expense
+              </div>
+            </div>
           )}
 
-          {/* Bottom Nav Bar (Dark theme override) */}
-          <div className="bottom-nav" style={{ backgroundColor: '#18191b', borderTop: '1.5px solid #22252a' }}>
-            <button className={`nav-item ${activeTab === 'groups' ? 'active' : ''}`} style={{ color: activeTab === 'groups' ? '#1cc29f' : '#cbd5e1' }} onClick={() => setActiveTab('groups')}>
+          <div className="bottom-nav" style={{ backgroundColor: '#18191b', borderTop: '1.5px solid #22252a', height: '70px' }}>
+            <button className={`nav-item ${activeTab === 'groups' ? 'active' : ''}`} style={{ color: activeTab === 'groups' ? '#1cc29f' : '#8e949a' }} onClick={() => setActiveTab('groups')}>
               <Users />
               <span>Groups</span>
             </button>
-            <button className={`nav-item ${activeTab === 'friends' ? 'active' : ''}`} style={{ color: activeTab === 'friends' ? '#1cc29f' : '#cbd5e1' }} onClick={() => setActiveTab('friends')}>
+            <button className={`nav-item ${activeTab === 'friends' ? 'active' : ''}`} style={{ color: activeTab === 'friends' ? '#1cc29f' : '#8e949a' }} onClick={() => setActiveTab('friends')}>
               <UserIcon />
               <span>Friends</span>
             </button>
-            <button className={`nav-item ${activeTab === 'activity' ? 'active' : ''}`} style={{ color: activeTab === 'activity' ? '#1cc29f' : '#cbd5e1' }} onClick={() => setActiveTab('activity')}>
-              <Layers />
+            <button className={`nav-item ${activeTab === 'activity' ? 'active' : ''}`} style={{ color: activeTab === 'activity' ? '#1cc29f' : '#8e949a' }} onClick={() => setActiveTab('activity')}>
+              <ImageIcon />
               <span>Activity</span>
             </button>
-            <button className={`nav-item ${activeTab === 'account' ? 'active' : ''}`} style={{ color: activeTab === 'account' ? '#1cc29f' : '#cbd5e1' }} onClick={() => setActiveTab('account')}>
-              <CreditCard />
+            <button className={`nav-item ${activeTab === 'account' ? 'active' : ''}`} style={{ color: activeTab === 'account' ? '#1cc29f' : '#8e949a' }} onClick={() => setActiveTab('account')}>
+              <div style={{
+                width: '22px',
+                height: '22px',
+                borderRadius: '50%',
+                overflow: 'hidden',
+                border: activeTab === 'account' ? '1.5px solid #1cc29f' : '1.5px solid #8e949a',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                marginBottom: '2px',
+                transition: 'all 0.2s ease'
+              }}>
+                <img 
+                  src={user?.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${user?.name}`} 
+                  alt="Account" 
+                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                />
+              </div>
               <span>Account</span>
             </button>
           </div>
         </div>
       )}
-
-      {/* 6. GROUP DETAILS PAGE */}
       {page === 'group-details' && selectedGroupDetails && (
         <div style={{
           flex: 1,
           display: 'flex',
           flexDirection: 'column',
-          backgroundColor: '#f8fafc',
+          backgroundColor: '#18191b',
           height: '100%',
-          overflow: 'hidden'
+          overflow: 'hidden',
+          position: 'relative'
         }} className="animate-slide-in">
           
-          {/* Header */}
+          {/* Crimson Header Banner */}
           <div style={{
-            backgroundColor: 'white',
-            borderBottom: '1px solid var(--border-color)',
-            padding: '16px 20px',
+            background: 'linear-gradient(135deg, #7c1a2e 0%, #4c0717 100%)',
+            padding: '20px 20px 24px 20px',
+            position: 'relative',
+            overflow: 'hidden',
             display: 'flex',
-            alignItems: 'center',
+            flexDirection: 'column',
             justifyContent: 'space-between',
-            zIndex: 10
+            minHeight: '180px',
+            boxShadow: '0 4px 20px rgba(0,0,0,0.15)'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
-              <button style={{ background: 'none', color: '#1e293b' }} onClick={() => {
-                setSelectedGroupId(null);
-                setPage('dashboard');
-              }}>
-                <ArrowLeft size={24} />
-              </button>
-              <div>
-                <h3 style={{ fontSize: '18px', fontWeight: 800, color: '#1e293b' }}>
-                  {selectedGroupDetails.group.name}
-                </h3>
-                <span style={{ fontSize: '12px', color: '#64748b' }}>
-                  {selectedGroupDetails.group.description || 'No description'}
-                </span>
-              </div>
-            </div>
-            <Settings size={20} style={{ color: '#64748b', cursor: 'pointer' }} />
-          </div>
-
-          {/* Group Action Sub-header */}
-          <div style={{
-            backgroundColor: '#e8f8f5',
-            padding: '14px 20px',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            borderBottom: '1px solid rgba(28, 194, 159, 0.1)'
-          }}>
-            <span style={{ 
-              fontSize: '13px', 
-              fontWeight: 700, 
-              color: selectedGroupDetails.currentUserStatus.type === 'owed' ? 'var(--color-owed)' : selectedGroupDetails.currentUserStatus.type === 'owe' ? 'var(--color-owe)' : '#475569'
+            {/* Tilted Plane Watermark Outline SVG */}
+            <svg width="220" height="220" viewBox="0 0 24 24" fill="none" stroke="rgba(255, 255, 255, 0.08)" strokeWidth="0.8" style={{
+              position: 'absolute',
+              right: '-30px',
+              bottom: '-30px',
+              transform: 'rotate(-25deg)',
+              pointerEvents: 'none'
             }}>
-              {selectedGroupDetails.currentUserStatus.text.toUpperCase()}
-            </span>
-            
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button 
-                className="btn-primary" 
-                style={{ width: 'auto', padding: '8px 14px', fontSize: '12px', borderRadius: '8px' }}
+              <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5S19 4 17.5 5.5L14 9 5.8 7.2 4.2 8.8l8 4.7-4 4-2.8-.7L4 18.2l3.5 1.3 1.3 3.5 1.4-1.4-.7-2.8 4-4 4.7 8 1.6-1.6z" />
+            </svg>
+
+            {/* Top Navigation Row */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', zIndex: 10 }}>
+              {/* Back Arrow */}
+              <div 
                 onClick={() => {
-                  setExpensePayer(user._id);
-                  setExpenseSplits(selectedGroupDetails.group.members.map(m => m._id));
-                  setShowAddExpense(true);
+                  setSelectedGroupId(null);
+                  setPage('dashboard');
+                }}
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
                 }}
               >
-                Add expense
-              </button>
-              
-              {selectedGroupDetails.currentUserStatus.amount > 0 && (
-                <button 
-                  className="btn-primary" 
-                  style={{ width: 'auto', padding: '8px 14px', fontSize: '12px', borderRadius: '8px', backgroundColor: '#e2f4f1', color: '#1cc29f', boxShadow: 'none' }}
-                  onClick={() => {
-                    // Populate default settle values
-                    if (selectedGroupDetails.currentUserStatus.type === 'owe') {
-                      setSettleFrom(user._id);
-                      const primaryOwed = selectedGroupDetails.currentUserStatus.owesTo[0];
-                      if (primaryOwed) {
-                        setSettleTo(primaryOwed.user._id);
-                        setSettleAmount(primaryOwed.amount.toFixed(2));
-                      }
-                    } else {
-                      const primaryOwer = selectedGroupDetails.currentUserStatus.owedBy[0];
-                      if (primaryOwer) {
-                        setSettleFrom(primaryOwer.user._id);
-                        setSettleTo(user._id);
-                        setSettleAmount(primaryOwer.amount.toFixed(2));
-                      }
-                    }
-                    setShowSettleUp(true);
-                  }}
-                >
-                  Settle up
-                </button>
-              )}
+                <ArrowLeft size={20} color="white" />
+              </div>
+
+              {/* Settings Cog */}
+              <div 
+                onClick={() => alert("Group Settings coming soon in premium v2! (Success)")}
+                style={{
+                  width: '38px',
+                  height: '38px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer'
+                }}
+              >
+                <Settings size={20} color="white" />
+              </div>
             </div>
+
+            {/* Group Title and Dates */}
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', marginTop: '24px', zIndex: 10 }}>
+              <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 700, color: 'white', margin: 0 }}>
+                {selectedGroupDetails.group.name}
+              </h3>
+              
+              {/* Jun 1 - 16 Date Range Pill */}
+              {(() => {
+                const getGroupDatesLabel = (group) => {
+                  if (!group) return null;
+                  const desc = group.description || '';
+                  if (desc.includes('•')) {
+                    return desc.split('•')[1].trim();
+                  }
+                  if (group.name.toLowerCase() === 'manali') {
+                    return "Jun 1 - 16";
+                  }
+                  return null;
+                };
+
+                const label = getGroupDatesLabel(selectedGroupDetails.group);
+                if (!label) return null;
+
+                return (
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                    padding: '6px 14px',
+                    borderRadius: '16px',
+                    marginTop: '10px'
+                  }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                      <line x1="16" y1="2" x2="16" y2="6" />
+                      <line x1="8" y1="2" x2="8" y2="6" />
+                      <line x1="3" y1="10" x2="21" y2="10" />
+                    </svg>
+                    <span style={{ fontSize: '13px', color: 'white', fontWeight: 500 }}>
+                      {label}
+                    </span>
+                  </div>
+                );
+              })()}
+            </div>
+
           </div>
 
-          {/* View Toggle Tabs */}
-          <div style={{ display: 'flex', backgroundColor: 'white', borderBottom: '1px solid var(--border-color)' }}>
+          {/* Horizontally Scrollable Action/Tab Bar */}
+          <div style={{
+            display: 'flex',
+            gap: '10px',
+            overflowX: 'auto',
+            whiteSpace: 'nowrap',
+            padding: '14px 20px',
+            backgroundColor: '#18191b',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)'
+          }} className="hide-scrollbar">
+            
+            {/* 1. Settle Up */}
             <button 
-              style={{ flex: 1, padding: '14px', fontSize: '13px', fontWeight: 600, color: '#1e293b', borderBottom: '2px solid var(--primary-teal)', background: 'none' }}
+              onClick={() => {
+                if (selectedGroupDetails.currentUserStatus.type === 'owe') {
+                  setSettleFrom(user._id);
+                  const primaryOwed = selectedGroupDetails.currentUserStatus.owesTo[0];
+                  if (primaryOwed) {
+                    setSettleTo(primaryOwed.user._id);
+                    setSettleAmount(primaryOwed.amount.toFixed(2));
+                  }
+                } else {
+                  const primaryOwer = selectedGroupDetails.currentUserStatus.owedBy[0];
+                  if (primaryOwer) {
+                    setSettleFrom(primaryOwer.user._id);
+                    setSettleTo(user._id);
+                    setSettleAmount(primaryOwer.amount.toFixed(2));
+                  }
+                }
+                setShowSettleUp(true);
+              }}
+              style={{
+                borderRadius: '20px',
+                border: '1.2px solid rgba(255, 255, 255, 0.22)',
+                padding: '6px 14px',
+                fontSize: '13.5px',
+                color: 'white',
+                fontWeight: '500',
+                backgroundColor: 'transparent',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                flexShrink: 0
+              }}
             >
-              Expenses & Activity
+              Settle up
+            </button>
+
+            {/* 2. Charts */}
+            <button 
+              onClick={() => setShowProCheckout(true)}
+              style={{
+                borderRadius: '20px',
+                border: '1.2px solid rgba(255, 255, 255, 0.22)',
+                padding: '6px 14px',
+                fontSize: '13.5px',
+                color: 'white',
+                fontWeight: '500',
+                backgroundColor: 'transparent',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '6px',
+                flexShrink: 0
+              }}
+            >
+              <span style={{ fontSize: '12px' }}>💎</span> Charts
+            </button>
+
+            {/* 3. Balances */}
+            <button 
+              onClick={() => alert("Balances Breakdown: " + (selectedGroupDetails.netDebts.length === 0 ? "Everyone is settled up!" : `${selectedGroupDetails.netDebts.length} outstanding debt records`))}
+              style={{
+                borderRadius: '20px',
+                border: '1.2px solid rgba(255, 255, 255, 0.22)',
+                padding: '6px 14px',
+                fontSize: '13.5px',
+                color: 'white',
+                fontWeight: '500',
+                backgroundColor: 'transparent',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                flexShrink: 0
+              }}
+            >
+              Balances
+            </button>
+
+            {/* 4. Totals */}
+            <button 
+              onClick={() => alert("Total Transactions: " + expenses.length)}
+              style={{
+                borderRadius: '20px',
+                border: '1.2px solid rgba(255, 255, 255, 0.22)',
+                padding: '6px 14px',
+                fontSize: '13.5px',
+                color: 'white',
+                fontWeight: '500',
+                backgroundColor: 'transparent',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                flexShrink: 0
+              }}
+            >
+              Totals
+            </button>
+
+            {/* 5. Whiteboard */}
+            <button 
+              onClick={() => alert("Group Whiteboard coming in next version! (Premium Feature)")}
+              style={{
+                borderRadius: '20px',
+                border: '1.2px solid rgba(255, 255, 255, 0.22)',
+                padding: '6px 14px',
+                fontSize: '13.5px',
+                color: 'white',
+                fontWeight: '500',
+                backgroundColor: 'transparent',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                flexShrink: 0
+              }}
+            >
+              Whiteboard
+            </button>
+
+            {/* 6. Export */}
+            <button 
+              onClick={() => alert("Downloading ledger transactions... (Success)")}
+              style={{
+                borderRadius: '20px',
+                border: '1.2px solid rgba(255, 255, 255, 0.22)',
+                padding: '6px 14px',
+                fontSize: '13.5px',
+                color: 'white',
+                fontWeight: '500',
+                backgroundColor: 'transparent',
+                cursor: 'pointer',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '4px',
+                flexShrink: 0
+              }}
+            >
+              Export
             </button>
           </div>
 
-          {/* Expenses & Activity Scroll */}
-          <div style={{ flex: 1, overflowY: 'auto', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Group Content Pane */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 80px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             
+            {/* Status Balance Sub-Header */}
+            {selectedGroupDetails.currentUserStatus.amount > 0 && (
+              <div style={{
+                backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                borderRadius: '12px',
+                padding: '12px 16px',
+                borderLeft: selectedGroupDetails.currentUserStatus.type === 'owed' ? '4px solid #1cc29f' : '4px solid #ff652f',
+                color: 'white',
+                fontSize: '13px',
+                fontWeight: 600,
+                textAlign: 'left'
+              }}>
+                {selectedGroupDetails.currentUserStatus.text.toUpperCase()}
+              </div>
+            )}
+
             {/* Net Balances Summary */}
-            <div className="glass-card" style={{ padding: '16px', borderRadius: '12px', backgroundColor: 'white' }}>
-              <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700, color: '#475569', marginBottom: '10px' }}>
-                Balances Breakdown
-              </h4>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {selectedGroupDetails.netDebts.length === 0 ? (
-                  <p style={{ fontSize: '13px', color: '#64748b', textAlign: 'center', padding: '10px' }}>
-                    Everyone is settled up!
-                  </p>
-                ) : (
-                  selectedGroupDetails.netDebts.filter(d => d && d.from && d.to).map((d, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px' }}>
+            {selectedGroupDetails.netDebts.length > 0 && (
+              <div className="glass-card" style={{ padding: '16px', borderRadius: '12px', backgroundColor: '#202124', border: '1px solid rgba(255, 255, 255, 0.05)', color: 'white' }}>
+                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700, color: 'rgba(255, 255, 255, 0.5)', marginBottom: '10px', textAlign: 'left' }}>
+                  Balances Breakdown
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {selectedGroupDetails.netDebts.filter(d => d && d.from && d.to).map((d, i) => (
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13.5px' }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <span style={{ fontWeight: 600 }}>{d.from.name}</span>
-                        <span style={{ color: '#94a3b8' }}>owes</span>
-                        <span style={{ fontWeight: 600 }}>{d.to.name}</span>
+                        <span style={{ fontWeight: 600, color: 'white' }}>{d.from.name}</span>
+                        <span style={{ color: 'rgba(255, 255, 255, 0.4)' }}>owes</span>
+                        <span style={{ fontWeight: 600, color: 'white' }}>{d.to.name}</span>
                       </div>
-                      <span style={{ fontWeight: 700, color: 'var(--color-owe)' }}>
+                      <span style={{ fontWeight: 700, color: '#ff652f' }}>
                         ${d.amount.toFixed(2)}
                       </span>
                     </div>
-                  ))
-                )}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
 
-            {/* Expenses List */}
-            <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 700, color: '#475569', marginTop: '10px' }}>
-              Transaction Log
-            </h4>
-
-            {expenses.length === 0 && settlements.length === 0 ? (
-              <div style={{ textAlign: 'center', padding: '40px 20px', color: '#64748b' }}>
-                <p style={{ fontSize: '14px' }}>No transactions recorded yet in this group.</p>
-              </div>
-            ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                {/* Show Settlements first, then Expenses, sorted by date (or as loaded) */}
-                {settlements.map(s => (
-                  <div 
-                    key={s._id}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      padding: '12px 16px',
-                      backgroundColor: '#f1f5f9',
-                      borderRadius: '12px',
-                      borderLeft: '4px solid #64748b'
-                    }}
-                  >
-                    <div style={{ marginRight: '12px', fontSize: '20px' }}>💸</div>
-                    <div style={{ flex: 1 }}>
-                      <p style={{ fontSize: '13px', fontWeight: 600, color: '#334155' }}>
-                        {s.fromUser.name} paid {s.toUser.name}
-                      </p>
-                      <span style={{ fontSize: '11px', color: '#94a3b8' }}>
-                        {new Date(s.createdAt).toLocaleDateString()}
-                      </span>
-                    </div>
-                    <div style={{ fontWeight: 800, fontSize: '15px', color: '#475569' }}>
-                      ${s.amount.toFixed(2)}
-                    </div>
-                  </div>
-                ))}
-
-                {expenses.map(e => {
-                  const wasPaidByMe = e.paidBy._id.toString() === user._id.toString();
-                  const mySplit = e.splits.find(s => s.user._id.toString() === user._id.toString());
-                  const myOwedShare = mySplit ? mySplit.owedAmount : 0;
-                  
-                  let shareText = '';
-                  let shareColor = '';
-
-                  if (wasPaidByMe) {
-                    const totalLent = e.amount - myOwedShare;
-                    shareText = `you lent $${totalLent.toFixed(2)}`;
-                    shareColor = 'var(--color-owed)';
-                  } else {
-                    shareText = myOwedShare > 0 ? `you borrowed $${myOwedShare.toFixed(2)}` : "you didn't split";
-                    shareColor = myOwedShare > 0 ? 'var(--color-owe)' : 'var(--text-secondary)';
-                  }
-
-                  return (
+            {/* Transaction Log Section */}
+            {expenses.length > 0 || settlements.length > 0 ? (
+              <>
+                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 600, color: 'rgba(255,255,255,0.4)', marginTop: '8px', textAlign: 'left' }}>
+                  Transaction Log
+                </h4>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                  {/* Show Settlements first, then Expenses */}
+                  {settlements.map(s => (
                     <div 
-                      key={e._id}
+                      key={s._id}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
-                        padding: '14px 16px',
-                        backgroundColor: 'white',
-                        borderRadius: '12px',
-                        border: '1px solid var(--border-color)'
+                        padding: '12px 16px',
+                        backgroundColor: '#202124',
+                        border: '1px solid rgba(255,255,255,0.05)',
+                        borderRadius: '12px'
                       }}
                     >
-                      <div style={{ marginRight: '14px', fontSize: '22px' }}>🍔</div>
-                      
-                      <div style={{ flex: 1 }}>
-                        <h5 style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b', marginBottom: '2px' }}>
-                          {e.description}
-                        </h5>
-                        <p style={{ fontSize: '11px', color: '#64748b' }}>
-                          Paid by {e.paidBy.name} • {new Date(e.createdAt).toLocaleDateString()}
+                      <div style={{ marginRight: '12px', fontSize: '20px' }}>💸</div>
+                      <div style={{ flex: 1, textAlign: 'left' }}>
+                        <p style={{ fontSize: '13.5px', fontWeight: 600, color: 'white', margin: 0 }}>
+                          {s.fromUser.name} paid {s.toUser.name}
                         </p>
+                        <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.4)', marginTop: '2px', display: 'block' }}>
+                          {new Date(s.createdAt).toLocaleDateString()}
+                        </span>
                       </div>
-
-                      <div style={{ textAlign: 'right' }}>
-                        <span style={{ fontSize: '10px', color: '#94a3b8', display: 'block' }}>
-                          Total Expense
-                        </span>
-                        <span style={{ fontSize: '14px', fontWeight: 700, color: '#1e293b', display: 'block' }}>
-                          ${e.amount.toFixed(2)}
-                        </span>
-                        <span style={{ fontSize: '11px', fontWeight: 600, color: shareColor }}>
-                          {shareText}
-                        </span>
+                      <div style={{ fontWeight: 700, fontSize: '15px', color: 'white' }}>
+                        ${s.amount.toFixed(2)}
                       </div>
                     </div>
-                  );
-                })}
+                  ))}
+
+                  {expenses.map(e => {
+                    const wasPaidByMe = e.paidBy._id.toString() === user._id.toString();
+                    const mySplit = e.splits.find(s => s.user._id.toString() === user._id.toString());
+                    const myOwedShare = mySplit ? mySplit.owedAmount : 0;
+                    
+                    let shareText = '';
+                    let shareColor = '';
+
+                    if (wasPaidByMe) {
+                      const totalLent = e.amount - myOwedShare;
+                      shareText = `you lent $${totalLent.toFixed(2)}`;
+                      shareColor = '#1cc29f';
+                    } else {
+                      shareText = myOwedShare > 0 ? `you borrowed $${myOwedShare.toFixed(2)}` : "you didn't split";
+                      shareColor = myOwedShare > 0 ? '#ff652f' : 'rgba(255,255,255,0.4)';
+                    }
+
+                    return (
+                      <div 
+                        key={e._id}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '14px 16px',
+                          backgroundColor: '#202124',
+                          border: '1px solid rgba(255,255,255,0.05)',
+                          borderRadius: '12px'
+                        }}
+                      >
+                        <div style={{ marginRight: '14px', fontSize: '22px' }}>🍔</div>
+                        
+                        <div style={{ flex: 1, textAlign: 'left' }}>
+                          <h5 style={{ fontSize: '14px', fontWeight: 700, color: 'white', marginBottom: '2px', marginTop: 0 }}>
+                            {e.description}
+                          </h5>
+                          <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
+                            Paid by {e.paidBy.name} • {new Date(e.createdAt).toLocaleDateString()}
+                          </p>
+                        </div>
+
+                        <div style={{ textAlign: 'right' }}>
+                          <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', display: 'block' }}>
+                            Total Expense
+                          </span>
+                          <span style={{ fontSize: '14px', fontWeight: 700, color: 'white', display: 'block' }}>
+                            ${e.amount.toFixed(2)}
+                          </span>
+                          <span style={{ fontSize: '11px', fontWeight: 600, color: shareColor }}>
+                            {shareText}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </>
+            ) : (
+              /* Custom High-Fidelity Empty Group Card */
+              <div style={{
+                backgroundColor: '#202124',
+                borderRadius: '16px',
+                padding: '24px 20px',
+                textAlign: 'center',
+                marginTop: '10px',
+                border: '1px solid rgba(255, 255, 255, 0.06)'
+              }}>
+                <p style={{ color: '#e3e3e3', fontSize: '15px', fontWeight: 400, margin: 0 }}>
+                  You're the only one here!
+                </p>
+                
+                {/* Button 1: Add group members */}
+                <div 
+                  onClick={() => setShowAddGroup(true)}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    backgroundColor: '#1cc29f',
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: '15px',
+                    padding: '13px 0',
+                    borderRadius: '24px',
+                    marginTop: '18px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="8.5" cy="7" r="4" />
+                    <line x1="20" y1="8" x2="20" y2="14" />
+                    <line x1="17" y1="11" x2="23" y2="11" />
+                  </svg>
+                  Add group members
+                </div>
+
+                {/* Button 2: Share group link */}
+                <div 
+                  onClick={() => alert("Group invitation link copied to clipboard! (Demo)")}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    backgroundColor: 'transparent',
+                    border: '1.2px solid rgba(255, 255, 255, 0.22)',
+                    color: 'white',
+                    fontWeight: 600,
+                    fontSize: '15px',
+                    padding: '13px 0',
+                    borderRadius: '24px',
+                    marginTop: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  Share group link
+                </div>
               </div>
             )}
           </div>
+
+          {/* Absolute Floating Action Buttons (Scan & Add Expense) */}
+          <div style={{
+            position: 'absolute',
+            bottom: '24px',
+            right: '20px',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'flex-end',
+            gap: '10px',
+            zIndex: 50
+          }}>
+            {/* 1. Scan Button */}
+            <div 
+              onClick={() => alert("Initializing Splitwise Receipt Scan OCR... (Pro Simulation)")}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                backgroundColor: '#2a2c2f',
+                border: '1.2px solid rgba(255, 255, 255, 0.18)',
+                borderRadius: '20px',
+                padding: '8px 18px',
+                color: 'white',
+                fontSize: '14px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                boxShadow: '0 4px 10px rgba(0,0,0,0.3)',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+              Scan
+            </div>
+
+            {/* 2. Add Expense Button */}
+            <div 
+              onClick={() => {
+                setExpensePayer(user._id);
+                setExpenseSplits(selectedGroupDetails.group.members.map(m => m._id));
+                setShowAddExpense(true);
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                backgroundColor: '#1cc29f',
+                borderRadius: '24px',
+                padding: '12px 24px',
+                color: 'white',
+                fontSize: '15px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                boxShadow: '0 6px 16px rgba(0,0,0,0.35)',
+                transition: 'all 0.2s ease'
+              }}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" />
+                <line x1="9" y1="9" x2="15" y2="9" />
+                <line x1="9" y1="13" x2="15" y2="13" />
+                <line x1="9" y1="17" x2="15" y2="17" />
+              </svg>
+              Add expense
+            </div>
+          </div>
+
         </div>
       )}
 
@@ -2679,147 +3517,990 @@ export default function App() {
         <div style={{
           position: 'absolute',
           top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: '#18191b',
           display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
+          flexDirection: 'column',
           zIndex: 100,
-          padding: '20px'
-        }}>
-          <div className="glass-card animate-fade-in" style={{
-            width: '100%',
-            backgroundColor: 'white',
-            padding: '24px',
-            borderRadius: '20px',
-            boxShadow: 'var(--shadow-lg)',
-            maxHeight: '90%',
-            overflowY: 'auto'
-          }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 800, marginBottom: '20px', color: '#1e293b' }}>
+          padding: '24px 20px',
+          color: 'white',
+          height: '100%',
+          overflowY: 'auto'
+        }} className="animate-fade-in">
+          
+          {/* Header Row */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '32px' }}>
+            {/* Close Button "X" */}
+            <svg 
+              onClick={() => setShowAddGroup(false)}
+              width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" 
+              style={{ cursor: 'pointer' }}
+            >
+              <line x1="18" y1="6" x2="6" y2="18" />
+              <line x1="6" y1="6" x2="18" y2="18" />
+            </svg>
+
+            {/* Title */}
+            <span style={{ fontFamily: 'var(--font-display)', fontSize: '19px', fontWeight: 500, color: 'white' }}>
               Create a group
-            </h3>
+            </span>
 
-            <form onSubmit={handleCreateGroup} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div className="input-group">
-                <label className="input-label">Group Name</label>
-                <input 
-                  type="text" 
-                  className="input-field" 
-                  placeholder="e.g. Ski Trip or Roommates"
-                  value={groupName} 
-                  onChange={(e) => setGroupName(e.target.value)} 
-                  required 
-                />
+            {/* Done Button */}
+            <span 
+              onClick={() => handleCreateGroup()}
+              style={{ 
+                color: 'white', 
+                fontSize: '17px', 
+                fontWeight: 600, 
+                cursor: 'pointer'
+              }}
+            >
+              Done
+            </span>
+          </div>
+
+          <form onSubmit={handleCreateGroup} style={{ display: 'flex', flexDirection: 'column', gap: '28px', flex: 1 }}>
+            {/* Group Name Input Row */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+              {/* Camera Outline Box */}
+              <div style={{ 
+                width: '64px', 
+                height: '64px', 
+                borderRadius: '12px', 
+                border: '1.5px solid #2e333d', 
+                display: 'flex', 
+                alignItems: 'center', 
+                justifyContent: 'center',
+                backgroundColor: 'transparent',
+                cursor: 'pointer'
+              }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2 2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                  {/* Plus inside camera */}
+                  <line x1="12" y1="10" x2="12" y2="13" stroke="white" strokeWidth="1.5" />
+                  <line x1="10.5" y1="11.5" x2="13.5" y2="11.5" stroke="white" strokeWidth="1.5" />
+                </svg>
               </div>
 
-              <div className="input-group">
-                <label className="input-label">Description (Optional)</label>
+              {/* Text Input */}
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                <span style={{ color: '#94a3b8', fontSize: '13px', fontWeight: 500 }}>
+                  Group name
+                </span>
                 <input 
                   type="text" 
-                  className="input-field" 
-                  placeholder="What is this group for?"
-                  value={groupDesc} 
-                  onChange={(e) => setGroupDesc(e.target.value)} 
+                  value={groupName}
+                  onChange={(e) => setGroupName(e.target.value)}
+                  placeholder=""
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    borderBottom: '2px solid #1cc29f',
+                    color: 'white',
+                    fontSize: '18px',
+                    padding: '6px 0',
+                    outline: 'none',
+                    width: '100%',
+                    fontFamily: 'var(--font-body)'
+                  }}
+                  autoFocus
+                  required
                 />
               </div>
+            </div>
 
-              <div className="input-group">
-                <label className="input-label">Add members</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '150px', overflowY: 'auto', padding: '8px', border: '1px solid #cbd5e1', borderRadius: '8px' }}>
-                  {users.filter(u => u._id !== user._id).map(u => {
-                    const isChecked = groupMembers.includes(u._id);
-                    return (
-                      <label key={u._id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
-                        <input 
-                          type="checkbox" 
-                          checked={isChecked}
-                          onChange={() => {
-                            if (isChecked) {
-                              setGroupMembers(groupMembers.filter(id => id !== u._id));
-                            } else {
-                              setGroupMembers([...groupMembers, u._id]);
-                            }
-                          }}
-                        />
-                        {u.name} ({u.email})
-                      </label>
-                    );
-                  })}
+            {/* Type Selector Block */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+              <span style={{ color: '#cbd5e1', fontSize: '15px', fontWeight: 500, textAlign: 'left' }}>
+                Type
+              </span>
+
+              {/* Row of 4 square type buttons */}
+              <div style={{ display: 'flex', gap: '12px' }}>
+                {/* 1. Trip */}
+                <div 
+                  onClick={() => setGroupType('trip')}
+                  style={{
+                    flex: 1,
+                    aspectRatio: '1',
+                    borderRadius: '12px',
+                    border: groupType === 'trip' ? '1px solid #1cc29f' : '1px solid rgba(255, 255, 255, 0.22)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    backgroundColor: groupType === 'trip' ? '#1cc29f' : 'transparent',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5S19 4 17.5 5.5L14 9 5.8 7.2 4.2 8.8l8 4.7-4 4-2.8-.7L4 18.2l3.5 1.3 1.3 3.5 1.4-1.4-.7-2.8 4-4 4.7 8 1.6-1.6z" />
+                  </svg>
+                  <span style={{ color: 'white', fontSize: '13px', fontWeight: 500 }}>Trip</span>
+                </div>
+
+                {/* 2. Home */}
+                <div 
+                  onClick={() => setGroupType('home')}
+                  style={{
+                    flex: 1,
+                    aspectRatio: '1',
+                    borderRadius: '12px',
+                    border: groupType === 'home' ? '1px solid #1cc29f' : '1px solid rgba(255, 255, 255, 0.22)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    backgroundColor: groupType === 'home' ? '#1cc29f' : 'transparent',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                    <polyline points="9 22 9 12 15 12 15 22" />
+                  </svg>
+                  <span style={{ color: 'white', fontSize: '13px', fontWeight: 500 }}>Home</span>
+                </div>
+
+                {/* 3. Couple */}
+                <div 
+                  onClick={() => setGroupType('couple')}
+                  style={{
+                    flex: 1,
+                    aspectRatio: '1',
+                    borderRadius: '12px',
+                    border: groupType === 'couple' ? '1px solid #1cc29f' : '1px solid rgba(255, 255, 255, 0.22)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    backgroundColor: groupType === 'couple' ? '#1cc29f' : 'transparent',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                  </svg>
+                  <span style={{ color: 'white', fontSize: '13px', fontWeight: 500 }}>Couple</span>
+                </div>
+
+                {/* 4. Other */}
+                <div 
+                  onClick={() => setGroupType('other')}
+                  style={{
+                    flex: 1,
+                    aspectRatio: '1',
+                    borderRadius: '12px',
+                    border: groupType === 'other' ? '1px solid #1cc29f' : '1px solid rgba(255, 255, 255, 0.22)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    cursor: 'pointer',
+                    backgroundColor: groupType === 'other' ? '#1cc29f' : 'transparent',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="8" y1="6" x2="21" y2="6" />
+                    <line x1="8" y1="12" x2="21" y2="12" />
+                    <line x1="8" y1="18" x2="21" y2="18" />
+                    <line x1="3" y1="6" x2="3" y2="6" strokeWidth="3" />
+                    <line x1="3" y1="12" x2="3" y2="12" strokeWidth="3" />
+                    <line x1="3" y1="18" x2="3" y2="18" strokeWidth="3" />
+                  </svg>
+                  <span style={{ color: 'white', fontSize: '13px', fontWeight: 500 }}>Other</span>
                 </div>
               </div>
+            </div>
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowAddGroup(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary" style={{ flex: 1 }}>
-                  Create
-                </button>
+            {/* Dynamic settings based on selected groupType */}
+            {groupType === 'trip' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'white', fontSize: '18px', fontWeight: 500 }}>
+                    Add trip dates
+                  </span>
+                  
+                  {/* Native Toggle Switch */}
+                  <div 
+                    onClick={() => setShowTripDates(!showTripDates)}
+                    style={{
+                      width: '42px',
+                      height: '24px',
+                      borderRadius: '12px',
+                      backgroundColor: showTripDates ? '#1cc29f' : '#2e333d',
+                      position: 'relative',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '2px'
+                    }}
+                  >
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      backgroundColor: 'white',
+                      position: 'absolute',
+                      left: showTripDates ? '20px' : '2px',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.4)'
+                    }} />
+                  </div>
+                </div>
+
+                {showTripDates && (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }} className="animate-fade-in">
+                    <p style={{ color: '#9aa0a6', fontSize: '14px', margin: 0, lineHeight: '1.5', textAlign: 'left' }}>
+                      Splitwise will remind friends to join, add expenses, and settle up.
+                    </p>
+
+                    <div style={{ display: 'flex', gap: '24px', width: '100%' }}>
+                      {/* Start Date */}
+                      <div 
+                        onClick={() => {
+                          setActiveDatePicker('start');
+                          setPickerMonth(tripStartDate ? new Date(tripStartDate).getMonth() : 4);
+                          setPickerYear(tripStartDate ? new Date(tripStartDate).getFullYear() : 2026);
+                        }}
+                        style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', cursor: 'pointer' }}
+                      >
+                        <span style={{ color: '#9aa0a6', fontSize: '13px', fontWeight: 500, textAlign: 'left' }}>
+                          Start
+                        </span>
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center',
+                          paddingBottom: '8px',
+                          borderBottom: '1.5px solid rgba(255, 255, 255, 0.25)'
+                        }}>
+                          <span style={{ color: 'white', fontSize: '16px', fontWeight: 400 }}>
+                            {formatDate(tripStartDate)}
+                          </span>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                            <line x1="16" y1="2" x2="16" y2="6" />
+                            <line x1="8" y1="2" x2="8" y2="6" />
+                            <line x1="3" y1="10" x2="21" y2="10" />
+                          </svg>
+                        </div>
+                      </div>
+
+                      {/* End Date */}
+                      <div 
+                        onClick={() => {
+                          setActiveDatePicker('end');
+                          setPickerMonth(tripEndDate ? new Date(tripEndDate).getMonth() : 4);
+                          setPickerYear(tripEndDate ? new Date(tripEndDate).getFullYear() : 2026);
+                        }}
+                        style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '6px', cursor: 'pointer' }}
+                      >
+                        <span style={{ color: '#9aa0a6', fontSize: '13px', fontWeight: 500, textAlign: 'left' }}>
+                          End
+                        </span>
+                        <div style={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center',
+                          paddingBottom: '8px',
+                          borderBottom: '1.5px solid rgba(255, 255, 255, 0.25)'
+                        }}>
+                          <span style={{ color: tripEndDate ? 'white' : 'rgba(255, 255, 255, 0.4)', fontSize: '16px', fontWeight: 400 }}>
+                            {tripEndDate ? formatDate(tripEndDate) : ''}
+                          </span>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#9aa0a6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                            <line x1="16" y1="2" x2="16" y2="6" />
+                            <line x1="8" y1="2" x2="8" y2="6" />
+                            <line x1="3" y1="10" x2="21" y2="10" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
-            </form>
-          </div>
+            )}
+
+            {groupType === 'home' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'white', fontSize: '18px', fontWeight: 500 }}>
+                    Add settle up reminders <span style={{ fontSize: '15px' }}>💎</span>
+                  </span>
+                  
+                  {/* Purple-tinted Toggle Switch */}
+                  <div 
+                    onClick={() => setShowSettleUpReminders(!showSettleUpReminders)}
+                    style={{
+                      width: '42px',
+                      height: '24px',
+                      borderRadius: '12px',
+                      backgroundColor: showSettleUpReminders ? '#8b5cf6' : '#2e333d',
+                      position: 'relative',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '2px'
+                    }}
+                  >
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      backgroundColor: 'white',
+                      position: 'absolute',
+                      left: showSettleUpReminders ? '20px' : '2px',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.4)'
+                    }} />
+                  </div>
+                </div>
+
+                <p style={{ color: '#9aa0a6', fontSize: '14px', margin: 0, lineHeight: '1.5', textAlign: 'left' }}>
+                  When on, Splitwise will remind group members to settle up.
+                </p>
+              </div>
+            )}
+
+            {groupType === 'couple' && (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginTop: '4px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ color: 'white', fontSize: '18px', fontWeight: 500 }}>
+                    Set balance alert <span style={{ fontSize: '15px' }}>💎</span>
+                  </span>
+                  
+                  {/* Purple Toggle Switch */}
+                  <div 
+                    onClick={() => setShowBalanceAlert(!showBalanceAlert)}
+                    style={{
+                      width: '42px',
+                      height: '24px',
+                      borderRadius: '12px',
+                      backgroundColor: showBalanceAlert ? '#8b5cf6' : '#2e333d',
+                      position: 'relative',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      padding: '2px'
+                    }}
+                  >
+                    <div style={{
+                      width: '20px',
+                      height: '20px',
+                      borderRadius: '50%',
+                      backgroundColor: 'white',
+                      position: 'absolute',
+                      left: showBalanceAlert ? '20px' : '2px',
+                      transition: 'all 0.2s ease',
+                      boxShadow: '0 1px 3px rgba(0,0,0,0.4)'
+                    }} />
+                  </div>
+                </div>
+
+                <p style={{ color: '#9aa0a6', fontSize: '14px', margin: 0, lineHeight: '1.5', textAlign: 'left' }}>
+                  When on, Splitwise will alert the group when someone's balance reaches a set amount.
+                </p>
+              </div>
+            )}
+
+            {/* Add Group Members List */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', flex: 1, minHeight: '160px' }}>
+              <span style={{ color: '#cbd5e1', fontSize: '15px', fontWeight: 500, textAlign: 'left' }}>
+                Add group members
+              </span>
+              
+              <div style={{ 
+                flex: 1, 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: '4px', 
+                overflowY: 'auto'
+              }}>
+                {users.filter(u => u._id !== user._id).map(u => {
+                  const isChecked = groupMembers.includes(u._id);
+                  const initials = u.name ? u.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
+                  return (
+                    <div 
+                      key={u._id}
+                      onClick={() => {
+                        if (isChecked) {
+                          setGroupMembers(groupMembers.filter(id => id !== u._id));
+                        } else {
+                          setGroupMembers([...groupMembers, u._id]);
+                        }
+                      }}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between',
+                        padding: '12px 0',
+                        borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+                        cursor: 'pointer',
+                        userSelect: 'none'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                        {/* Circular Initials Avatar */}
+                        <div style={{
+                          width: '38px',
+                          height: '38px',
+                          borderRadius: '50%',
+                          backgroundColor: isChecked ? 'rgba(28, 194, 159, 0.15)' : 'rgba(255, 255, 255, 0.1)',
+                          border: isChecked ? '1px solid #1cc29f' : '1px solid transparent',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          color: isChecked ? '#1cc29f' : '#e2e8f0',
+                          fontWeight: '600',
+                          fontSize: '14px',
+                          transition: 'all 0.2s ease'
+                        }}>
+                          {initials}
+                        </div>
+
+                        {/* Name & Email */}
+                        <div style={{ display: 'flex', flexDirection: 'column', textAlign: 'left' }}>
+                          <span style={{ color: 'white', fontWeight: 500, fontSize: '15px' }}>{u.name}</span>
+                          <span style={{ fontSize: '12px', color: '#94a3b8', marginTop: '2px' }}>{u.email}</span>
+                        </div>
+                      </div>
+
+                      {/* Custom Circular Checkbox */}
+                      {isChecked ? (
+                        <div style={{
+                          width: '22px',
+                          height: '22px',
+                          borderRadius: '50%',
+                          backgroundColor: '#1cc29f',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transition: 'all 0.2s ease'
+                        }}>
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12" />
+                          </svg>
+                        </div>
+                      ) : (
+                        <div style={{
+                          width: '22px',
+                          height: '22px',
+                          borderRadius: '50%',
+                          border: '2px solid rgba(255, 255, 255, 0.3)',
+                          backgroundColor: 'transparent',
+                          transition: 'all 0.2s ease'
+                        }} />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </form>
+
+          {/* Date Picker Bottom Sheet Overlay */}
+          {(() => {
+            if (!activeDatePicker) return null;
+
+            const getDaysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
+            const getFirstDayOfMonth = (y, m) => new Date(y, m, 1).getDay();
+            const monthNames = [
+              "January", "February", "March", "April", "May", "June",
+              "July", "August", "September", "October", "November", "December"
+            ];
+
+            const isDaySelected = (dNum) => {
+              const targetDate = activeDatePicker === 'start' ? tripStartDate : tripEndDate;
+              if (!targetDate) return false;
+              const d = new Date(targetDate);
+              return d.getFullYear() === pickerYear && d.getMonth() === pickerMonth && d.getDate() === dNum;
+            };
+
+            const handlePrevMonth = () => {
+              if (pickerMonth === 0) {
+                setPickerMonth(11);
+                setPickerYear(pickerYear - 1);
+              } else {
+                setPickerMonth(pickerMonth - 1);
+              }
+            };
+
+            const handleNextMonth = () => {
+              if (pickerMonth === 11) {
+                setPickerMonth(0);
+                setPickerYear(pickerYear + 1);
+              } else {
+                setPickerMonth(pickerMonth + 1);
+              }
+            };
+
+            return (
+              <div style={{
+                position: 'absolute',
+                top: 0, left: 0, right: 0, bottom: 0,
+                backgroundColor: 'rgba(0, 0, 0, 0.6)',
+                zIndex: 200,
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'flex-end',
+                transition: 'all 0.3s ease'
+              }} onClick={() => setActiveDatePicker(null)}>
+                
+                {/* Bottom Sheet Card */}
+                <div 
+                  style={{
+                    backgroundColor: '#1e1f21',
+                    borderTopLeftRadius: '24px',
+                    borderTopRightRadius: '24px',
+                    padding: '24px 20px 36px 20px',
+                    color: 'white',
+                    maxHeight: '85%',
+                    display: 'flex',
+                    flexDirection: 'column'
+                  }} 
+                  onClick={(e) => e.stopPropagation()} // Stop click propagation to avoid closing
+                  className="animate-slide-up"
+                >
+                  {/* Title */}
+                  <h3 style={{ 
+                    fontFamily: 'var(--font-display)', 
+                    fontSize: '18px', 
+                    fontWeight: 500, 
+                    textAlign: 'center', 
+                    margin: '0 0 20px 0',
+                    color: 'white'
+                  }}>
+                    {activeDatePicker === 'start' ? 'Start date' : 'End date'}
+                  </h3>
+
+                  {/* Month Navigation Row */}
+                  <div style={{ 
+                    display: 'flex', 
+                    justifyContent: 'space-between', 
+                    alignItems: 'center', 
+                    marginBottom: '20px',
+                    padding: '0 12px'
+                  }}>
+                    {/* Previous Month Chevron */}
+                    <div onClick={handlePrevMonth} style={{ cursor: 'pointer', padding: '6px' }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="15 18 9 12 15 6" />
+                      </svg>
+                    </div>
+
+                    {/* Month/Year Name */}
+                    <span style={{ fontSize: '16px', fontWeight: 500 }}>
+                      {monthNames[pickerMonth]} {pickerYear}
+                    </span>
+
+                    {/* Next Month Chevron */}
+                    <div onClick={handleNextMonth} style={{ cursor: 'pointer', padding: '6px' }}>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="9 18 15 12 9 6" />
+                      </svg>
+                    </div>
+                  </div>
+
+                  {/* Day of Week Header Grid */}
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(7, 1fr)', 
+                    textAlign: 'center', 
+                    color: 'rgba(255, 255, 255, 0.4)', 
+                    fontSize: '14px', 
+                    fontWeight: 500, 
+                    marginBottom: '16px' 
+                  }}>
+                    {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, idx) => (
+                      <div key={idx}>{day}</div>
+                    ))}
+                  </div>
+
+                  {/* Calendar Days Grid */}
+                  <div style={{ 
+                    display: 'grid', 
+                    gridTemplateColumns: 'repeat(7, 1fr)', 
+                    rowGap: '12px', 
+                    columnGap: '4px',
+                    textAlign: 'center'
+                  }}>
+                    {/* Render empty cells for prepended blank days */}
+                    {Array.from({ length: getFirstDayOfMonth(pickerYear, pickerMonth) }).map((_, idx) => (
+                      <div key={`blank-${idx}`} />
+                    ))}
+
+                    {/* Render active days of the month */}
+                    {Array.from({ length: getDaysInMonth(pickerYear, pickerMonth) }).map((_, idx) => {
+                      const dNum = idx + 1;
+                      const isSelected = isDaySelected(dNum);
+                      return (
+                        <div 
+                          key={`day-${dNum}`}
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            aspectRatio: '1',
+                            cursor: 'pointer'
+                          }}
+                          onClick={() => {
+                            const selectedDate = new Date(pickerYear, pickerMonth, dNum);
+                            if (activeDatePicker === 'start') {
+                              setTripStartDate(selectedDate);
+                            } else {
+                              setTripEndDate(selectedDate);
+                            }
+                            setActiveDatePicker(null);
+                          }}
+                        >
+                          <div style={{
+                            width: '36px',
+                            height: '36px',
+                            borderRadius: '50%',
+                            backgroundColor: isSelected ? '#1cc29f' : 'transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            color: 'white',
+                            fontWeight: isSelected ? '600' : '400',
+                            fontSize: '15px',
+                            transition: 'all 0.15s ease'
+                          }}>
+                            {dNum}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
-      {/* D. ADD FRIEND MODAL */}
+      {/* D. ADD FRIEND SCREEN & CONTACT PICKER */}
       {showAddFriend && (
         <div style={{
           position: 'absolute',
           top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          backgroundColor: '#18191b',
+          zIndex: 150,
           display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
-          zIndex: 100,
-          padding: '20px'
-        }}>
-          <div className="glass-card animate-fade-in" style={{
-            width: '100%',
-            backgroundColor: 'white',
-            padding: '24px',
-            borderRadius: '20px',
-            boxShadow: 'var(--shadow-lg)',
-            maxHeight: '90%',
-            overflowY: 'auto'
+          flexDirection: 'column',
+          color: 'white',
+          fontFamily: 'var(--font-body)'
+        }} className="animate-fade-in">
+          
+          {/* Header with back button and search input */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '16px',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            gap: '16px'
           }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 800, marginBottom: '20px', color: '#1e293b' }}>
-              Add a friend
-            </h3>
-
-            <form onSubmit={handleAddFriend} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div className="input-group">
-                <label className="input-label">Friend's Name</label>
-                <input 
-                  type="text" 
-                  className="input-field" 
-                  placeholder="e.g. Mummy or John"
-                  value={friendName} 
-                  onChange={(e) => setFriendName(e.target.value)} 
-                  required 
-                />
-              </div>
-
-              <div className="input-group">
-                <label className="input-label">Email address (Optional)</label>
-                <input 
-                  type="email" 
-                  className="input-field" 
-                  placeholder="friend@example.com"
-                  value={friendEmail} 
-                  onChange={(e) => setFriendEmail(e.target.value)} 
-                />
-              </div>
-
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowAddFriend(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary" style={{ flex: 1 }}>
-                  Add friend
-                </button>
-              </div>
-            </form>
+            {/* Back button ← */}
+            <svg 
+              onClick={() => {
+                setShowAddFriend(false);
+                setSearchContactQuery('');
+              }}
+              width="24" 
+              height="24" 
+              viewBox="0 0 24 24" 
+              fill="none" 
+              stroke="white" 
+              strokeWidth="2.5" 
+              strokeLinecap="round" 
+              strokeLinejoin="round"
+              style={{ cursor: 'pointer' }}
+            >
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12,19 5,12 12,5" />
+            </svg>
+            
+            {/* Search / Entry input */}
+            <input 
+              type="text" 
+              placeholder="Enter name, email, or phone #"
+              value={searchContactQuery}
+              onChange={(e) => setSearchContactQuery(e.target.value)}
+              style={{
+                flex: 1,
+                backgroundColor: 'transparent',
+                border: 'none',
+                color: 'white',
+                fontSize: '18px',
+                outline: 'none',
+                caretColor: '#1cc29f'
+              }}
+              autoFocus
+            />
           </div>
+
+          {/* Main content area */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '16px 0' }}>
+            
+            {/* Option: Add Someone New */}
+            <div 
+              onClick={async () => {
+                const nameToAdd = searchContactQuery.trim();
+                if (!nameToAdd) {
+                  const customName = prompt("Enter the name of your new friend:");
+                  if (customName && customName.trim()) {
+                    await handleCreateFriendDirect(customName.trim());
+                  }
+                } else {
+                  await handleCreateFriendDirect(nameToAdd);
+                }
+              }}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                padding: '16px 20px',
+                gap: '16px',
+                cursor: 'pointer',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+                transition: 'background-color 0.2s ease'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+            >
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="8.5" cy="7" r="4" />
+                <line x1="20" y1="8" x2="20" y2="14" />
+                <line x1="17" y1="11" x2="23" y2="11" />
+              </svg>
+              <span style={{ fontSize: '16px', fontWeight: 500, color: 'white' }}>
+                {searchContactQuery.trim() 
+                  ? `Add "${searchContactQuery.trim()}" as a new friend` 
+                  : "Add someone new"
+                }
+              </span>
+            </div>
+
+            {/* Contacts Header / List */}
+            {contactsPermission === 'granted' ? (
+              <div style={{ marginTop: '16px' }}>
+                <div style={{ 
+                  padding: '8px 20px', 
+                  fontSize: '13px', 
+                  fontWeight: 600, 
+                  color: 'rgba(255, 255, 255, 0.4)',
+                  letterSpacing: '0.5px',
+                  textTransform: 'uppercase'
+                }}>
+                  From your contacts
+                </div>
+                
+                {/* Contact List */}
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {filteredContacts.length > 0 ? (
+                    filteredContacts.map((contact, idx) => (
+                      <div 
+                        key={idx}
+                        onClick={() => handleCreateFriendDirect(contact.name, contact.phone)}
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          padding: '14px 20px',
+                          gap: '16px',
+                          cursor: 'pointer',
+                          borderBottom: '1px solid rgba(255, 255, 255, 0.03)',
+                          transition: 'background-color 0.2s'
+                        }}
+                        onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
+                        onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                      >
+                        {/* Phone icon */}
+                        <div style={{
+                          backgroundColor: '#2d3035',
+                          width: '40px',
+                          height: '40px',
+                          borderRadius: '50%',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a0aec0" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z" />
+                          </svg>
+                        </div>
+                        
+                        {/* Contact details */}
+                        <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
+                          <span style={{ fontSize: '16px', fontWeight: 600, color: 'white' }}>
+                            {contact.name}
+                          </span>
+                          <span style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.4)', marginTop: '2px' }}>
+                            {contact.phone}
+                          </span>
+                        </div>
+                      </div>
+                    ))
+                  ) : (
+                    <div style={{ padding: '32px 20px', color: 'rgba(255, 255, 255, 0.4)', fontSize: '15px', textAlign: 'center' }}>
+                      No matching contacts found.
+                    </div>
+                  )}
+                </div>
+              </div>
+            ) : contactsPermission === 'denied' ? (
+              <div style={{ padding: '40px 24px', textAlign: 'center', color: 'rgba(255, 255, 255, 0.5)' }}>
+                <span style={{ fontSize: '36px', display: 'block', marginBottom: '16px' }}>🔒</span>
+                <p style={{ fontSize: '15px', lineHeight: '1.5', margin: '0 0 20px 0' }}>
+                  Contacts permission is denied. You can manually type name above or enable permission to select contacts.
+                </p>
+                <button 
+                  onClick={() => {
+                    localStorage.setItem('splitwise_contacts_permission', 'granted');
+                    setContactsPermission('granted');
+                  }}
+                  style={{
+                    backgroundColor: '#2d3035',
+                    border: '1.2px solid rgba(255, 255, 255, 0.15)',
+                    color: '#1cc29f',
+                    borderRadius: '8px',
+                    padding: '8px 20px',
+                    fontSize: '14px',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    outline: 'none'
+                  }}
+                >
+                  Enable Contacts Access
+                </button>
+              </div>
+            ) : null}
+          </div>
+
+          {/* Android modern permission dialog pop-up */}
+          {showPermissionDialog && (
+            <div style={{
+              position: 'absolute',
+              top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.65)',
+              backdropFilter: 'blur(2px)',
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'center',
+              zIndex: 200,
+              padding: '24px'
+            }} className="animate-fade-in">
+              <div style={{
+                width: '100%',
+                maxWidth: '320px',
+                backgroundColor: '#2d3035',
+                padding: '24px',
+                borderRadius: '28px',
+                boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                animation: 'scale-up 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+              }}>
+                {/* Person svg icon */}
+                <div style={{
+                  width: '48px',
+                  height: '48px',
+                  borderRadius: '50%',
+                  backgroundColor: 'rgba(28, 194, 159, 0.12)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  marginBottom: '16px'
+                }}>
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                </div>
+                
+                <h3 style={{
+                  fontSize: '18px',
+                  fontWeight: 600,
+                  color: 'white',
+                  textAlign: 'center',
+                  margin: '0 0 8px 0',
+                  lineHeight: '1.3'
+                }}>
+                  Allow Splitwise to access your contacts?
+                </h3>
+                
+                <p style={{
+                  fontSize: '14px',
+                  color: '#9aa0a6',
+                  textAlign: 'center',
+                  margin: '0 0 24px 0',
+                  lineHeight: '1.45'
+                }}>
+                  This lets you quickly find and add friends from your address book to split bills and group expenses.
+                </p>
+                
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                  <button 
+                    onClick={handleAllowContacts}
+                    style={{
+                      width: '100%',
+                      backgroundColor: '#1cc29f',
+                      color: 'white',
+                      border: 'none',
+                      borderRadius: '100px',
+                      padding: '12px',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      outline: 'none',
+                      transition: 'background-color 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#18ab8b'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#1cc29f'}
+                  >
+                    Allow
+                  </button>
+                  <button 
+                    onClick={handleDenyContacts}
+                    style={{
+                      width: '100%',
+                      backgroundColor: 'transparent',
+                      color: '#a0aec0',
+                      border: 'none',
+                      borderRadius: '100px',
+                      padding: '12px',
+                      fontSize: '14px',
+                      fontWeight: 600,
+                      cursor: 'pointer',
+                      outline: 'none',
+                      transition: 'color 0.2s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.color = 'white'}
+                    onMouseLeave={(e) => e.currentTarget.style.color = '#a0aec0'}
+                  >
+                    Don't allow
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
         </div>
       )}
 
