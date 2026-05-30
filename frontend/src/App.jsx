@@ -123,7 +123,12 @@ export default function App() {
   const [contactsPermission, setContactsPermission] = useState(() => localStorage.getItem('splitwise_contacts_permission') || 'prompt');
   const [searchContactQuery, setSearchContactQuery] = useState('');
   const [showPermissionDialog, setShowPermissionDialog] = useState(false);
-  const [contactsPickerMode, setContactsPickerMode] = useState('friend'); // 'friend' or 'group'
+  const [contactsPickerMode, _setContactsPickerMode] = useState('friend'); // 'friend' or 'group'
+  const contactsPickerModeRef = React.useRef('friend');
+  const setContactsPickerMode = (mode) => {
+    contactsPickerModeRef.current = mode;
+    _setContactsPickerMode(mode);
+  };
 
   // Form Inputs
   const [authEmail, setAuthEmail] = useState('');
@@ -534,7 +539,7 @@ export default function App() {
             if (res.ok) {
               const newFriend = await res.json();
               if (newFriend && newFriend._id) {
-                if (contactsPickerMode === 'group') {
+                if (contactsPickerModeRef.current === 'group') {
                   if (selectedGroupId && !showAddGroup) {
                     // Add directly to existing group members
                     const currentMembers = selectedGroupDetails?.group?.members || [];
@@ -552,7 +557,7 @@ export default function App() {
                       newCheckedIds.push(newFriend._id);
                     }
                   }
-                } else if (contactsPickerMode === 'expense') {
+                } else if (contactsPickerModeRef.current === 'expense') {
                   if (!newExpenseSplits.includes(newFriend._id)) {
                     newExpenseSplits.push(newFriend._id);
                   }
@@ -574,13 +579,13 @@ export default function App() {
             }
           }
           await fetchUsers();
-          if (contactsPickerMode === 'group') {
+          if (contactsPickerModeRef.current === 'group') {
             if (selectedGroupId && !showAddGroup) {
               await fetchGroupDetails(selectedGroupId);
             } else {
               setGroupMembers(newCheckedIds);
             }
-          } else if (contactsPickerMode === 'expense') {
+          } else if (contactsPickerModeRef.current === 'expense') {
             setExpenseSplits(newExpenseSplits);
             if (selectedGroupId) {
               await fetchGroupDetails(selectedGroupId);
@@ -629,7 +634,7 @@ export default function App() {
             if (res.ok) {
               const newFriend = await res.json();
               if (newFriend && newFriend._id) {
-                if (contactsPickerMode === 'group') {
+                if (contactsPickerModeRef.current === 'group') {
                   if (selectedGroupId && !showAddGroup) {
                     // Add directly to existing group members
                     const currentMembers = selectedGroupDetails?.group?.members || [];
@@ -647,7 +652,7 @@ export default function App() {
                       newCheckedIds.push(newFriend._id);
                     }
                   }
-                } else if (contactsPickerMode === 'expense') {
+                } else if (contactsPickerModeRef.current === 'expense') {
                   if (!newExpenseSplits.includes(newFriend._id)) {
                     newExpenseSplits.push(newFriend._id);
                   }
@@ -669,13 +674,13 @@ export default function App() {
             }
           }
           await fetchUsers();
-          if (contactsPickerMode === 'group') {
+          if (contactsPickerModeRef.current === 'group') {
             if (selectedGroupId && !showAddGroup) {
               await fetchGroupDetails(selectedGroupId);
             } else {
               setGroupMembers(newCheckedIds);
             }
-          } else if (contactsPickerMode === 'expense') {
+          } else if (contactsPickerModeRef.current === 'expense') {
             setExpenseSplits(newExpenseSplits);
             if (selectedGroupId) {
               await fetchGroupDetails(selectedGroupId);
@@ -711,7 +716,7 @@ export default function App() {
       if (res.ok) {
         const newFriend = await res.json();
         await fetchUsers();
-        if (contactsPickerMode === 'group') {
+        if (contactsPickerModeRef.current === 'group') {
           if (newFriend && newFriend._id) {
             if (selectedGroupId && !showAddGroup) {
               // Existing group
@@ -732,7 +737,7 @@ export default function App() {
               }
             }
           }
-        } else if (contactsPickerMode === 'expense') {
+        } else if (contactsPickerModeRef.current === 'expense') {
           if (newFriend && newFriend._id) {
             if (!expenseSplits.includes(newFriend._id)) {
               setExpenseSplits([...expenseSplits, newFriend._id]);
