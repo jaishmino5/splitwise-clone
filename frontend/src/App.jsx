@@ -871,8 +871,9 @@ export default function App() {
       setSelectedGroupId(defaultGroup._id);
       fetchGroupDetails(defaultGroup._id);
       setExpensePayer(user._id);
+      const isNonGroup = defaultGroup.name && (defaultGroup.name.toLowerCase().includes('non-group') || defaultGroup.name.toLowerCase().includes('non group'));
       if (defaultGroup.members) {
-        setExpenseSplits(defaultGroup.members.map(m => m._id || m));
+        setExpenseSplits(isNonGroup ? [user._id] : defaultGroup.members.map(m => m._id || m));
       } else {
         setExpenseSplits([user._id]);
       }
@@ -3535,6 +3536,48 @@ export default function App() {
           {/* Group Content Pane */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 80px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             
+            {/* If it's the special Non-group expenses group, show 'Select from Phone Contacts Book' button */}
+            {(selectedGroupDetails?.group?.name?.toLowerCase().includes('non-group') || selectedGroupDetails?.group?.name?.toLowerCase().includes('non group')) && (
+              <div 
+                onClick={() => {
+                  setContactsPickerMode('group');
+                  handleOpenAddFriend();
+                }}
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '10px',
+                  padding: '12px 14px',
+                  backgroundColor: 'rgba(28, 194, 159, 0.06)',
+                  border: '1px dashed rgba(28, 194, 159, 0.5)',
+                  borderRadius: '10px',
+                  cursor: 'pointer',
+                  marginTop: '4px',
+                  marginBottom: '4px',
+                  transition: 'all 0.2s ease',
+                  userSelect: 'none'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(28, 194, 159, 0.12)';
+                  e.currentTarget.style.borderColor = '#1cc29f';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.backgroundColor = 'rgba(28, 194, 159, 0.06)';
+                  e.currentTarget.style.borderColor = 'rgba(28, 194, 159, 0.5)';
+                }}
+              >
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                  <circle cx="8.5" cy="7" r="4" />
+                  <line x1="20" y1="8" x2="20" y2="14" />
+                  <line x1="17" y1="11" x2="23" y2="11" />
+                </svg>
+                <span style={{ color: '#1cc29f', fontSize: '14.5px', fontWeight: 600 }}>
+                  Select from Phone Contacts Book
+                </span>
+              </div>
+            )}
+
             {/* Status Balance Sub-Header */}
             {selectedGroupDetails?.group?.members?.filter(Boolean).length > 1 && (
               selectedGroupDetails.currentUserStatus.amount <= 0 ? (
@@ -3604,7 +3647,7 @@ export default function App() {
                   You're the only one here!
                 </p>
                 
-                {/* Button 1: Add group members */}
+                {/* Button 1: Add group members / friends */}
                 <div 
                   onClick={() => {
                     setContactsPickerMode('group');
@@ -3632,30 +3675,34 @@ export default function App() {
                     <line x1="20" y1="8" x2="20" y2="14" />
                     <line x1="17" y1="11" x2="23" y2="11" />
                   </svg>
-                  Add group members
+                  {selectedGroupDetails?.group?.name && (selectedGroupDetails.group.name.toLowerCase().includes('non-group') || selectedGroupDetails.group.name.toLowerCase().includes('non group')) 
+                    ? "Add friends" 
+                    : "Add group members"}
                 </div>
 
-                {/* Button 2: Share group link */}
-                <div 
-                  onClick={handleShareGroupLink}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    backgroundColor: 'transparent',
-                    border: '1.2px solid rgba(255, 255, 255, 0.22)',
-                    color: 'white',
-                    fontWeight: 600,
-                    fontSize: '15px',
-                    padding: '13px 0',
-                    borderRadius: '24px',
-                    marginTop: '12px',
-                    cursor: 'pointer',
-                    transition: 'all 0.2s ease'
-                  }}
-                >
-                  Share group link
-                </div>
+                {/* Button 2: Share group link (only show if NOT non-group) */}
+                {!(selectedGroupDetails?.group?.name && (selectedGroupDetails.group.name.toLowerCase().includes('non-group') || selectedGroupDetails.group.name.toLowerCase().includes('non group'))) && (
+                  <div 
+                    onClick={handleShareGroupLink}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: 'transparent',
+                      border: '1.2px solid rgba(255, 255, 255, 0.22)',
+                      color: 'white',
+                      fontWeight: 600,
+                      fontSize: '15px',
+                      padding: '13px 0',
+                      borderRadius: '24px',
+                      marginTop: '12px',
+                      cursor: 'pointer',
+                      transition: 'all 0.2s ease'
+                    }}
+                  >
+                    Share group link
+                  </div>
+                )}
               </div>
             ) : selectedGroupDetails.currentUserStatus.amount <= 0 && (expenses.length > 0 || settlements.length > 0) ? (
               /* Custom High-Fidelity Settled Up Empty State matching second mockup image */
@@ -3992,7 +4039,8 @@ export default function App() {
                 <div 
                   onClick={() => {
                     setExpensePayer(user._id);
-                    setExpenseSplits(selectedGroupDetails?.group?.members ? selectedGroupDetails.group.members.filter(m => m && m._id).map(m => m._id) : [user._id]);
+                    const isNonGroup = selectedGroupDetails?.group?.name && (selectedGroupDetails.group.name.toLowerCase().includes('non-group') || selectedGroupDetails.group.name.toLowerCase().includes('non group'));
+                    setExpenseSplits(isNonGroup ? [user._id] : (selectedGroupDetails?.group?.members ? selectedGroupDetails.group.members.filter(m => m && m._id).map(m => m._id) : [user._id]));
                     setExpenseFromHome(false);
                     setShowAddExpense(true);
                   }}
@@ -4060,7 +4108,8 @@ export default function App() {
             <div 
               onClick={() => {
                 setExpensePayer(user._id);
-                setExpenseSplits(selectedGroupDetails?.group?.members ? selectedGroupDetails.group.members.filter(m => m && m._id).map(m => m._id) : [user._id]);
+                const isNonGroup = selectedGroupDetails?.group?.name && (selectedGroupDetails.group.name.toLowerCase().includes('non-group') || selectedGroupDetails.group.name.toLowerCase().includes('non group'));
+                setExpenseSplits(isNonGroup ? [user._id] : (selectedGroupDetails?.group?.members ? selectedGroupDetails.group.members.filter(m => m && m._id).map(m => m._id) : [user._id]));
                 setExpenseFromHome(false);
                 setShowAddExpense(true);
               }}
@@ -4186,7 +4235,7 @@ export default function App() {
                       </option>
                     ))}
                   </select>
-                ) : selectedGroupId && selectedGroupDetails?.group ? (
+                ) : (selectedGroupId && selectedGroupDetails?.group && !selectedGroupDetails.group.name.toLowerCase().includes('non-group') && !selectedGroupDetails.group.name.toLowerCase().includes('non group')) ? (
                   /* Single premium group pill badge representing "All of [GroupName]" */
                   <div style={{
                     display: 'inline-flex',
@@ -4547,8 +4596,9 @@ export default function App() {
                       onClick={() => {
                         setSelectedGroupId(g._id);
                         fetchGroupDetails(g._id);
+                        const isNonGroup = g.name && (g.name.toLowerCase().includes('non-group') || g.name.toLowerCase().includes('non group'));
                         if (g.members) {
-                          setExpenseSplits(g.members.map(m => m._id || m));
+                          setExpenseSplits(isNonGroup ? [user._id] : g.members.map(m => m._id || m));
                         }
                         setShowGroupSelector(false);
                       }}
