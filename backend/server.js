@@ -509,6 +509,101 @@ app.post('/api/groups', async (req, res) => {
   }
 });
 
+app.put('/api/groups/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, members } = req.body;
+    
+    const updateData = {};
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (members !== undefined) updateData.members = members;
+    
+    const updated = await db.updateGroup(id, updateData);
+    if (!updated) {
+      return res.status(404).json({ error: "Group not found" });
+    }
+    res.json(updated);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.get('/api/activity', async (req, res) => {
+  try {
+    const { userId } = req.query;
+    if (!userId) {
+      return res.status(400).json({ error: "userId query parameter is required" });
+    }
+
+    // 1. Get all groups that this user is a member of
+    const groups = await db.getGroups();
+    const userGroups = groups.filter(g => 
+      g.members && g.members.some(m => m && m._id && m._id.toString() === userId.toString())
+    );
+    const userGroupIds = userGroups.map(g => g._id.toString());
+
+    // 2. Fetch all expenses & settlements
+    const allExpenses = await db.getExpenses();
+    const allSettlements = await db.getSettlements();
+
+    // 3. Filter expenses & settlements belonging to the user's groups
+    const filteredExpenses = allExpenses.filter(e => e.group && userGroupIds.includes(e.group.toString()));
+    const filteredSettlements = allSettlements.filter(s => s.group && userGroupIds.includes(s.group.toString()));
+
+    // 4. Construct activity items
+    const activities = [];
+
+    // Group creations
+    userGroups.forEach(g => {
+      activities.push({
+        type: 'group_created',
+        id: g._id,
+        group: { _id: g._id, name: g.name },
+        timestamp: g.createdAt || new Date(0).toISOString(),
+        description: g.description,
+        creator: g.members[0] || null
+      });
+    });
+
+    // Expenses
+    filteredExpenses.forEach(e => {
+      const grp = userGroups.find(g => g._id.toString() === e.group.toString());
+      activities.push({
+        type: 'expense_added',
+        id: e._id,
+        group: grp ? { _id: grp._id, name: grp.name } : { _id: e.group, name: 'Group' },
+        description: e.description,
+        amount: e.amount,
+        paidBy: e.paidBy,
+        splits: e.splits,
+        timestamp: e.createdAt || new Date(0).toISOString()
+      });
+    });
+
+    // Settlements
+    filteredSettlements.forEach(s => {
+      const grp = userGroups.find(g => g._id.toString() === s.group.toString());
+      activities.push({
+        type: 'settlement_added',
+        id: s._id,
+        group: grp ? { _id: grp._id, name: grp.name } : { _id: s.group, name: 'Group' },
+        fromUser: s.fromUser,
+        toUser: s.toUser,
+        amount: s.amount,
+        timestamp: s.createdAt || new Date(0).toISOString()
+      });
+    });
+
+    // Sort chronologically (newest first)
+    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    res.json(activities);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 3. Expenses
 app.get('/api/expenses', async (req, res) => {
   try {
@@ -522,7 +617,7 @@ app.get('/api/expenses', async (req, res) => {
 
 app.post('/api/expenses', async (req, res) => {
   try {
-    const { description, amount, paidBy, group, splitUserIds } = req.body;
+    const { description, amount, paidBy, group, splitUserIds, createdAt } = req.body;
     
     if (!description || !amount || !paidBy || !group || !splitUserIds || splitUserIds.length === 0) {
       return res.status(400).json({ error: "Missing required expense parameters" });
@@ -551,7 +646,8 @@ app.post('/api/expenses', async (req, res) => {
       amount,
       paidBy,
       group,
-      splits
+      splits,
+      createdAt: createdAt || new Date().toISOString()
     });
 
     res.status(201).json(expense);

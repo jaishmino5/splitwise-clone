@@ -97,6 +97,10 @@ export default function App() {
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expensePayer, setExpensePayer] = useState('');
   const [expenseSplits, setExpenseSplits] = useState([]); // Array of userIds selected
+  const [expenseDate, setExpenseDate] = useState(new Date());
+  const [showGroupSelector, setShowGroupSelector] = useState(false);
+  const [showPayerSelector, setShowPayerSelector] = useState(false);
+  const [activities, setActivities] = useState([]);
 
   // Settle Up Form Inputs
   const [settleFrom, setSettleFrom] = useState('');
@@ -174,9 +178,23 @@ export default function App() {
     }
   };
 
+  const fetchActivities = async () => {
+    if (!user) return;
+    try {
+      const res = await fetch(`${API_BASE}/activity?userId=${user._id}`);
+      if (res.ok) {
+        const data = await res.json();
+        setActivities(data);
+      }
+    } catch (err) {
+      console.error("Error fetching activities:", err);
+    }
+  };
+
   useEffect(() => {
     if (user) {
       fetchDashboardData();
+      fetchActivities();
     }
   }, [user]);
 
@@ -455,6 +473,7 @@ export default function App() {
         const picked = await navigator.contacts.select(props, opts);
         if (picked && picked.length > 0) {
           const newCheckedIds = [...groupMembers];
+          const newExpenseSplits = [...expenseSplits];
           for (const contact of picked) {
             const name = contact.name?.[0] || 'Unknown';
             const phone = contact.tel?.[0] || '';
@@ -465,15 +484,59 @@ export default function App() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ name, email })
             });
-            if (res.ok && contactsPickerMode === 'group') {
+            if (res.ok) {
               const newFriend = await res.json();
-              if (newFriend && newFriend._id && !newCheckedIds.includes(newFriend._id)) {
-                newCheckedIds.push(newFriend._id);
+              if (newFriend && newFriend._id) {
+                if (contactsPickerMode === 'group') {
+                  if (selectedGroupId) {
+                    // Add directly to existing group members
+                    const currentMembers = selectedGroupDetails?.group?.members || [];
+                    if (!currentMembers.some(m => m._id === newFriend._id)) {
+                      const updatedMembers = [...currentMembers.map(m => m._id), newFriend._id];
+                      await fetch(`${API_BASE}/groups/${selectedGroupId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ members: updatedMembers })
+                      });
+                    }
+                  } else {
+                    // Creating new group
+                    if (!newCheckedIds.includes(newFriend._id)) {
+                      newCheckedIds.push(newFriend._id);
+                    }
+                  }
+                } else if (contactsPickerMode === 'expense') {
+                  if (!newExpenseSplits.includes(newFriend._id)) {
+                    newExpenseSplits.push(newFriend._id);
+                  }
+                  
+                  // If there is an active group, add the new contact to group members in DB
+                  if (selectedGroupId) {
+                    const currentMembers = selectedGroupDetails?.group?.members || [];
+                    if (!currentMembers.some(m => m._id === newFriend._id)) {
+                      const updatedMembers = [...currentMembers.map(m => m._id), newFriend._id];
+                      await fetch(`${API_BASE}/groups/${selectedGroupId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ members: updatedMembers })
+                      });
+                    }
+                  }
+                }
               }
             }
           }
           if (contactsPickerMode === 'group') {
-            setGroupMembers(newCheckedIds);
+            if (selectedGroupId) {
+              await fetchGroupDetails(selectedGroupId);
+            } else {
+              setGroupMembers(newCheckedIds);
+            }
+          } else if (contactsPickerMode === 'expense') {
+            setExpenseSplits(newExpenseSplits);
+            if (selectedGroupId) {
+              await fetchGroupDetails(selectedGroupId);
+            }
           }
           await fetchDashboardData();
           alert(`Successfully imported ${picked.length} contacts!`);
@@ -483,7 +546,7 @@ export default function App() {
         console.log("Native Contact Picker closed/failed, showing fallback view:", err);
       }
     }
-
+ 
     // Fallback path (Desktop or unsupported or closed picker):
     setShowAddFriend(true);
     if (contactsPermission === 'prompt') {
@@ -504,6 +567,7 @@ export default function App() {
         const picked = await navigator.contacts.select(props, opts);
         if (picked && picked.length > 0) {
           const newCheckedIds = [...groupMembers];
+          const newExpenseSplits = [...expenseSplits];
           for (const contact of picked) {
             const name = contact.name?.[0] || 'Unknown';
             const phone = contact.tel?.[0] || '';
@@ -514,15 +578,59 @@ export default function App() {
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ name, email })
             });
-            if (res.ok && contactsPickerMode === 'group') {
+            if (res.ok) {
               const newFriend = await res.json();
-              if (newFriend && newFriend._id && !newCheckedIds.includes(newFriend._id)) {
-                newCheckedIds.push(newFriend._id);
+              if (newFriend && newFriend._id) {
+                if (contactsPickerMode === 'group') {
+                  if (selectedGroupId) {
+                    // Add directly to existing group members
+                    const currentMembers = selectedGroupDetails?.group?.members || [];
+                    if (!currentMembers.some(m => m._id === newFriend._id)) {
+                      const updatedMembers = [...currentMembers.map(m => m._id), newFriend._id];
+                      await fetch(`${API_BASE}/groups/${selectedGroupId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ members: updatedMembers })
+                      });
+                    }
+                  } else {
+                    // Creating new group
+                    if (!newCheckedIds.includes(newFriend._id)) {
+                      newCheckedIds.push(newFriend._id);
+                    }
+                  }
+                } else if (contactsPickerMode === 'expense') {
+                  if (!newExpenseSplits.includes(newFriend._id)) {
+                    newExpenseSplits.push(newFriend._id);
+                  }
+                  
+                  // If there is an active group, add the new contact to group members in DB
+                  if (selectedGroupId) {
+                    const currentMembers = selectedGroupDetails?.group?.members || [];
+                    if (!currentMembers.some(m => m._id === newFriend._id)) {
+                      const updatedMembers = [...currentMembers.map(m => m._id), newFriend._id];
+                      await fetch(`${API_BASE}/groups/${selectedGroupId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ members: updatedMembers })
+                      });
+                    }
+                  }
+                }
               }
             }
           }
           if (contactsPickerMode === 'group') {
-            setGroupMembers(newCheckedIds);
+            if (selectedGroupId) {
+              await fetchGroupDetails(selectedGroupId);
+            } else {
+              setGroupMembers(newCheckedIds);
+            }
+          } else if (contactsPickerMode === 'expense') {
+            setExpenseSplits(newExpenseSplits);
+            if (selectedGroupId) {
+              await fetchGroupDetails(selectedGroupId);
+            }
           }
           await fetchDashboardData();
           setShowAddFriend(false);
@@ -554,8 +662,44 @@ export default function App() {
       if (res.ok) {
         const newFriend = await res.json();
         if (contactsPickerMode === 'group') {
-          if (newFriend && newFriend._id && !groupMembers.includes(newFriend._id)) {
-            setGroupMembers([...groupMembers, newFriend._id]);
+          if (newFriend && newFriend._id) {
+            if (selectedGroupId) {
+              // Existing group
+              const currentMembers = selectedGroupDetails?.group?.members || [];
+              if (!currentMembers.some(m => m._id === newFriend._id)) {
+                const updatedMembers = [...currentMembers.map(m => m._id), newFriend._id];
+                await fetch(`${API_BASE}/groups/${selectedGroupId}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ members: updatedMembers })
+                });
+                await fetchGroupDetails(selectedGroupId);
+              }
+            } else {
+              // New group creation
+              if (!groupMembers.includes(newFriend._id)) {
+                setGroupMembers([...groupMembers, newFriend._id]);
+              }
+            }
+          }
+        } else if (contactsPickerMode === 'expense') {
+          if (newFriend && newFriend._id) {
+            if (!expenseSplits.includes(newFriend._id)) {
+              setExpenseSplits([...expenseSplits, newFriend._id]);
+            }
+            // Add to active group members in database
+            if (selectedGroupId) {
+              const currentMembers = selectedGroupDetails?.group?.members || [];
+              if (!currentMembers.some(m => m._id === newFriend._id)) {
+                const updatedMembers = [...currentMembers.map(m => m._id), newFriend._id];
+                await fetch(`${API_BASE}/groups/${selectedGroupId}`, {
+                  method: 'PUT',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ members: updatedMembers })
+                });
+                await fetchGroupDetails(selectedGroupId);
+              }
+            }
           }
         }
         setShowAddFriend(false);
@@ -633,16 +777,21 @@ export default function App() {
           amount: parseFloat(expenseAmount),
           paidBy: expensePayer,
           group: selectedGroupId,
-          splitUserIds: expenseSplits
+          splitUserIds: expenseSplits,
+          createdAt: expenseDate.toISOString()
         })
       });
       if (res.ok) {
         setShowAddExpense(false);
         setExpenseDesc('');
         setExpenseAmount('');
+        setExpenseDate(new Date()); // Reset date
         // Refresh details
         await fetchGroupDetails(selectedGroupId);
         await fetchDashboardData();
+        if (typeof fetchActivities === 'function') {
+          await fetchActivities();
+        }
       } else {
         alert("Failed to add expense");
       }
@@ -2274,7 +2423,7 @@ export default function App() {
                 <h1 style={{ fontFamily: 'var(--font-display)', fontSize: '28px', fontWeight: 700, color: 'white', margin: 0 }}>
                   Activity
                 </h1>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }} onClick={() => fetchActivities()}>
                   <circle cx="11" cy="11" r="8" />
                   <line x1="21" y1="21" x2="16.65" y2="16.65" />
                 </svg>
@@ -2282,7 +2431,7 @@ export default function App() {
 
               {/* Activity List */}
               <div style={{ flex: 1, overflowY: 'auto' }}>
-                {groups.length === 0 ? (
+                {activities.length === 0 ? (
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '80%', padding: '40px 20px', textAlign: 'center' }}>
                     <span style={{ fontSize: '48px', marginBottom: '16px' }}>📈</span>
                     <h3 style={{ fontSize: '18px', fontWeight: 600, color: 'white', marginBottom: '8px' }}>No recent activity</h3>
@@ -2290,44 +2439,116 @@ export default function App() {
                   </div>
                 ) : (
                   <div style={{ display: 'flex', flexDirection: 'column' }}>
-                    {/* Sort groups by createdAt (newest first) to simulate real activity */}
-                    {[...groups].sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0)).map(g => {
-                      const lname = g.name.toLowerCase();
-                      const desc = (g.description || '').toLowerCase();
+                    {activities.map(act => {
+                      const timestamp = act.timestamp;
                       
-                      let avatarBg = 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)'; // default other
+                      let avatarBg = 'linear-gradient(135deg, #6b7280 0%, #4b5563 100%)';
                       let categorySvg = (
                         <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                           <line x1="8" y1="6" x2="21" y2="6" />
                           <line x1="8" y1="12" x2="21" y2="12" />
                           <line x1="8" y1="18" x2="21" y2="18" />
-                          <line x1="3" y1="6" x2="3" y2="6" strokeWidth="3" />
-                          <line x1="3" y1="12" x2="3" y2="12" strokeWidth="3" />
-                          <line x1="3" y1="18" x2="3" y2="18" strokeWidth="3" />
+                          <circle cx="3" cy="6" r="1.5" fill="white" />
+                          <circle cx="3" cy="12" r="1.5" fill="white" />
+                          <circle cx="3" cy="18" r="1.5" fill="white" />
                         </svg>
                       );
-                      
-                      if (lname.includes('manali') || lname.includes('jaish') || lname.includes('beach') || lname.includes('trip') || lname.includes('travel') || lname.includes('vacation') || desc.includes('trip')) {
-                        avatarBg = 'linear-gradient(135deg, #a8203c 0%, #5d0f1e 100%)'; // Crimson Red gradient
+
+                      let textHtml = null;
+
+                      if (act.type === 'group_created') {
+                        const lname = (act.group.name || '').toLowerCase();
+                        const desc = (act.description || '').toLowerCase();
+                        if (lname.includes('manali') || lname.includes('jaish') || lname.includes('beach') || lname.includes('trip') || lname.includes('travel') || lname.includes('vacation') || desc.includes('trip')) {
+                          avatarBg = 'linear-gradient(135deg, #a8203c 0%, #5d0f1e 100%)'; // Crimson Red
+                          categorySvg = (
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5S19 4 17.5 5.5L14 9 5.8 7.2 4.2 8.8l8 4.7-4 4-2.8-.7L4 18.2l3.5 1.3 1.3 3.5 1.4-1.4-.7-2.8 4-4 4.7 8 1.6-1.6z" />
+                            </svg>
+                          );
+                        } else if (lname.includes('house') || lname.includes('home') || lname.includes('room') || lname.includes('rent') || lname.includes('flat') || lname.includes('apartment') || lname.includes('bill') || desc.includes('home')) {
+                          avatarBg = 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)'; // Orange
+                          categorySvg = (
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                              <polyline points="9 22 9 12 15 12 15 22" />
+                            </svg>
+                          );
+                        } else if (lname.includes('couple') || lname.includes('partner') || lname.includes('love') || lname.includes('relationship') || desc.includes('couple')) {
+                          avatarBg = 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)'; // Purple
+                          categorySvg = (
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
+                            </svg>
+                          );
+                        }
+
+                        const creatorName = act.creator?._id === user._id ? 'You' : (act.creator?.name || 'Someone');
+                        textHtml = (
+                          <span>
+                            <strong>{creatorName}</strong> created the group <strong style={{ fontWeight: 600 }}>“{act.group.name}”</strong>.
+                          </span>
+                        );
+
+                      } else if (act.type === 'expense_added') {
+                        const ldesc = (act.description || '').toLowerCase();
+                        if (ldesc.includes('dinner') || ldesc.includes('food') || ldesc.includes('groceries') || ldesc.includes('cafe') || ldesc.includes('eat') || ldesc.includes('lunch') || ldesc.includes('breakfast') || ldesc.includes('restaurant')) {
+                          avatarBg = 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'; // Amber/Food
+                          categorySvg = (
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                            </svg>
+                          );
+                        } else if (ldesc.includes('cab') || ldesc.includes('taxi') || ldesc.includes('bus') || ldesc.includes('fuel') || ldesc.includes('travel') || ldesc.includes('train') || ldesc.includes('flight') || ldesc.includes('metro')) {
+                          avatarBg = 'linear-gradient(135deg, #ef4444 0%, #b91c1c 100%)'; // Crimson Red / Travel
+                          categorySvg = (
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="1" y="3" width="15" height="13" />
+                              <polyline points="16 8 20 8 23 11 23 16 16 16 16 8" />
+                              <circle cx="5.5" cy="18.5" r="2.5" />
+                              <circle cx="18.5" cy="18.5" r="2.5" />
+                            </svg>
+                          );
+                        } else if (ldesc.includes('rent') || ldesc.includes('bill') || ldesc.includes('wifi') || ldesc.includes('room') || ldesc.includes('flat') || ldesc.includes('electricity') || ldesc.includes('maintenance')) {
+                          avatarBg = 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)'; // Blue / Rent/Bill
+                          categorySvg = (
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+                              <polyline points="9 22 9 12 15 12 15 22" />
+                            </svg>
+                          );
+                        } else {
+                          avatarBg = 'linear-gradient(135deg, #10b981 0%, #059669 100%)'; // Green / Expense
+                          categorySvg = (
+                            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                              <rect x="2" y="4" width="20" height="16" rx="2" />
+                              <line x1="2" y1="10" x2="22" y2="10" />
+                            </svg>
+                          );
+                        }
+
+                        const payerName = act.paidBy?._id === user._id ? 'You' : (act.paidBy?.name || 'Someone');
+                        textHtml = (
+                          <span>
+                            <strong>{payerName}</strong> added <strong style={{ fontWeight: 600 }}>“{act.description}”</strong> in <strong style={{ fontWeight: 600 }}>“{act.group.name}”</strong>.
+                          </span>
+                        );
+
+                      } else if (act.type === 'settlement_added') {
+                        avatarBg = 'linear-gradient(135deg, #10b981 0%, #047857 100%)'; // Green Settlement
                         categorySvg = (
-                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5S19 4 17.5 5.5L14 9 5.8 7.2 4.2 8.8l8 4.7-4 4-2.8-.7L4 18.2l3.5 1.3 1.3 3.5 1.4-1.4-.7-2.8 4-4 4.7 8 1.6-1.6z" />
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+                            <polyline points="22 4 12 14.01 9 11.01" />
                           </svg>
                         );
-                      } else if (lname.includes('house') || lname.includes('home') || lname.includes('room') || lname.includes('rent') || lname.includes('flat') || lname.includes('apartment') || lname.includes('bill') || desc.includes('home')) {
-                        avatarBg = 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)'; // Orange gradient
-                        categorySvg = (
-                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-                            <polyline points="9 22 9 12 15 12 15 22" />
-                          </svg>
-                        );
-                      } else if (lname.includes('couple') || lname.includes('partner') || lname.includes('love') || lname.includes('relationship') || desc.includes('couple')) {
-                        avatarBg = 'linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%)'; // Purple gradient
-                        categorySvg = (
-                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-                          </svg>
+
+                        const fromName = act.fromUser?._id === user._id ? 'You' : (act.fromUser?.name || 'Someone');
+                        const toName = act.toUser?._id === user._id ? 'you' : (act.toUser?.name || 'someone');
+                        textHtml = (
+                          <span>
+                            <strong>{fromName}</strong> settled up with <strong>{toName}</strong> in <strong style={{ fontWeight: 600 }}>“{act.group.name}”</strong>.
+                          </span>
                         );
                       }
                       
@@ -2356,11 +2577,13 @@ export default function App() {
 
                       return (
                         <div 
-                          key={g._id}
+                          key={act.id}
                           onClick={() => {
-                            setSelectedGroupId(g._id);
-                            fetchGroupDetails(g._id);
-                            setPage('group-details');
+                            if (act.group && act.group._id) {
+                              setSelectedGroupId(act.group._id);
+                              fetchGroupDetails(act.group._id);
+                              setPage('group-details');
+                            }
                           }}
                           style={{
                             display: 'flex',
@@ -2403,7 +2626,7 @@ export default function App() {
                               justifyContent: 'center'
                             }}>
                               <img 
-                                src={user.avatarUrl || `https://api.dicebear.com/7.x/adventurer/svg?seed=${user.name}`} 
+                                src={(act.type === 'expense_added' ? act.paidBy?.avatarUrl : act.type === 'settlement_added' ? act.fromUser?.avatarUrl : act.creator?.avatarUrl) || `https://api.dicebear.com/7.x/adventurer/svg?seed=${user.name}`} 
                                 alt="User" 
                                 style={{ width: '100%', height: '100%', objectFit: 'cover' }}
                               />
@@ -2413,10 +2636,10 @@ export default function App() {
                           {/* Right Description Text Block */}
                           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left' }}>
                             <span style={{ color: 'white', fontSize: '15px', lineHeight: '1.4' }}>
-                              <strong>You</strong> created the group <strong style={{ fontWeight: 600 }}>“{g.name}”</strong>.
+                              {textHtml}
                             </span>
                             <span style={{ fontSize: '12.5px', color: '#9aa0a6', marginTop: '3px' }}>
-                              {formatActivityTime(g.createdAt)}
+                              {formatActivityTime(timestamp)}
                             </span>
                           </div>
                         </div>
@@ -3256,7 +3479,10 @@ export default function App() {
                 
                 {/* Button 1: Add group members */}
                 <div 
-                  onClick={() => setShowAddGroup(true)}
+                  onClick={() => {
+                    setContactsPickerMode('group');
+                    handleOpenAddFriend();
+                  }}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -3381,113 +3607,533 @@ export default function App() {
 
       {/* --- MODALS (Add Expense, Settle Up, Create Group) --- */}
 
-      {/* A. ADD EXPENSE MODAL */}
+      {/* A. REDESIGNED HIGH-FIDELITY ADD EXPENSE SCREEN */}
       {showAddExpense && selectedGroupDetails && (
         <div style={{
           position: 'absolute',
           top: 0, left: 0, right: 0, bottom: 0,
-          backgroundColor: 'rgba(0, 0, 0, 0.5)',
-          display: 'flex',
-          justifyContent: 'center',
-          alignItems: 'center',
+          backgroundColor: '#18191b',
           zIndex: 100,
-          padding: '20px'
-        }}>
-          <div className="glass-card animate-fade-in" style={{
-            width: '100%',
-            backgroundColor: 'white',
-            padding: '24px',
-            borderRadius: '20px',
-            boxShadow: 'var(--shadow-lg)',
-            maxHeight: '90%',
-            overflowY: 'auto'
+          display: 'flex',
+          flexDirection: 'column',
+          color: 'white',
+          fontFamily: 'var(--font-body)'
+        }} className="animate-fade-in">
+          
+          {/* 1. Header with arrow and save checkmark */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '16px 20px',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            backgroundColor: '#202124'
           }}>
-            <h3 style={{ fontFamily: 'var(--font-display)', fontSize: '18px', fontWeight: 800, marginBottom: '20px', color: '#1e293b' }}>
-              Add an expense
-            </h3>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              {/* Back Arrow Button */}
+              <svg 
+                onClick={() => {
+                  setShowAddExpense(false);
+                  setExpenseDesc('');
+                  setExpenseAmount('');
+                }}
+                width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                style={{ cursor: 'pointer' }}
+              >
+                <line x1="19" y1="12" x2="5" y2="12" />
+                <polyline points="12,19 5,12 12,5" />
+              </svg>
+              <span style={{ fontSize: '18px', fontWeight: 600 }}>Add expense</span>
+            </div>
 
-            <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-              <div className="input-group">
-                <label className="input-label">With you and</label>
-                <div style={{ padding: '8px 12px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '13px', backgroundColor: '#f8fafc', fontWeight: 600 }}>
-                  {selectedGroupDetails.group.name}
-                </div>
+            {/* Checkmark Save Button */}
+            <svg 
+              onClick={async (e) => {
+                e.preventDefault();
+                await handleAddExpense(e);
+              }}
+              width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+              style={{ cursor: 'pointer' }}
+            >
+              <polyline points="20 6 9 17 4 12" />
+            </svg>
+          </div>
+
+          {/* Form Content */}
+          <form onSubmit={handleAddExpense} style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 80px 20px', display: 'flex', flexDirection: 'column', gap: '28px' }}>
+            
+            {/* Search/Participant container */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', fontSize: '15px' }}>
+                <span style={{ color: 'rgba(255, 255, 255, 0.6)' }}>With <strong>you</strong> and:</span>
+                
+                {/* Display currently selected friends/members as tags */}
+                {users.filter(u => expenseSplits.includes(u._id) && u._id !== user._id).map(u => (
+                  <span 
+                    key={u._id}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      backgroundColor: 'rgba(28, 194, 159, 0.15)',
+                      border: '1px solid rgba(28, 194, 159, 0.4)',
+                      padding: '4px 10px',
+                      borderRadius: '100px',
+                      fontSize: '13px',
+                      fontWeight: 500,
+                      color: '#1cc29f'
+                    }}
+                  >
+                    {u.name}
+                    <svg 
+                      onClick={() => {
+                        setExpenseSplits(expenseSplits.filter(id => id !== u._id));
+                      }}
+                      width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+                      style={{ cursor: 'pointer', marginLeft: '2px' }}
+                    >
+                      <line x1="18" y1="6" x2="6" y2="18" />
+                      <line x1="6" y1="6" x2="18" y2="18" />
+                    </svg>
+                  </span>
+                ))}
+
+                {/* Input field which opens custom contact picker */}
+                <input 
+                  type="text"
+                  placeholder="Enter names, emails, or phone..."
+                  onClick={() => {
+                    setContactsPickerMode('expense');
+                    handleOpenAddFriend();
+                  }}
+                  readOnly
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    color: 'white',
+                    fontSize: '15px',
+                    outline: 'none',
+                    flex: 1,
+                    minWidth: '150px',
+                    cursor: 'pointer'
+                  }}
+                />
               </div>
+              <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.08)', marginTop: '4px' }} />
+            </div>
 
-              <div className="input-group">
-                <label className="input-label">Description</label>
+            {/* Description Section with Receipt Icon */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: '40px', height: '40px', borderRadius: '8px',
+                border: '1.2px solid rgba(255,255,255,0.15)',
+                display: 'flex', alignItems: 'center', justifyItems: 'center',
+                justifyContent: 'center', backgroundColor: '#202124'
+              }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                  <polyline points="14 2 14 8 20 8" />
+                  <line x1="16" y1="13" x2="8" y2="13" />
+                  <line x1="16" y1="17" x2="8" y2="17" />
+                  <polyline points="10 9 9 9 8 9" />
+                </svg>
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <input 
                   type="text" 
-                  className="input-field" 
-                  placeholder="e.g. Dinner or Groceries"
+                  placeholder="Enter a description"
                   value={expenseDesc} 
                   onChange={(e) => setExpenseDesc(e.target.value)} 
                   required 
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    borderBottom: '1.5px solid rgba(255,255,255,0.12)',
+                    color: 'white',
+                    fontSize: '18px',
+                    padding: '8px 0',
+                    outline: 'none',
+                    width: '100%'
+                  }}
                 />
               </div>
+            </div>
 
-              <div className="input-group">
-                <label className="input-label">Amount ($)</label>
+            {/* Amount Section with Dollar Icon */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <div style={{
+                width: '40px', height: '40px', borderRadius: '8px',
+                border: '1.2px solid rgba(255,255,255,0.15)',
+                display: 'flex', alignItems: 'center', justifyItems: 'center',
+                justifyContent: 'center', backgroundColor: '#202124',
+                fontSize: '20px', fontWeight: 600
+              }}>
+                $
+              </div>
+              <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <input 
                   type="number" 
                   step="0.01" 
-                  className="input-field" 
                   placeholder="0.00"
                   value={expenseAmount} 
                   onChange={(e) => setExpenseAmount(e.target.value)} 
                   required 
+                  style={{
+                    backgroundColor: 'transparent',
+                    border: 'none',
+                    borderBottom: '1.5px solid rgba(255,255,255,0.12)',
+                    color: 'white',
+                    fontSize: '32px',
+                    fontWeight: 700,
+                    padding: '8px 0',
+                    outline: 'none',
+                    width: '100%'
+                  }}
                 />
               </div>
+            </div>
 
-              <div className="input-group">
-                <label className="input-label">Paid by</label>
-                <select 
-                  className="input-field" 
-                  value={expensePayer} 
-                  onChange={(e) => setExpensePayer(e.target.value)}
-                  required
-                >
-                  {selectedGroupDetails.group.members.map(m => (
-                    <option key={m._id} value={m._id}>{m.name}</option>
-                  ))}
-                </select>
+            {/* Paid By and Split equally info row */}
+            <div style={{ textAlign: 'center', margin: '12px 0', fontSize: '15px', color: 'rgba(255,255,255,0.8)' }}>
+              Paid by {' '}
+              <span 
+                onClick={() => setShowPayerSelector(true)}
+                style={{
+                  backgroundColor: 'rgba(28, 194, 159, 0.12)',
+                  border: '1px solid #1cc29f',
+                  color: '#1cc29f',
+                  padding: '4px 12px',
+                  borderRadius: '6px',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  marginLeft: '4px',
+                  marginRight: '4px',
+                  display: 'inline-block'
+                }}
+              >
+                {expensePayer === user._id ? 'you' : (users.find(u => u._id === expensePayer)?.name || 'someone')}
+              </span>
+              {' '} and split {' '}
+              <span 
+                style={{
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  color: 'white',
+                  padding: '4px 12px',
+                  borderRadius: '6px',
+                  fontWeight: 600,
+                  marginLeft: '4px',
+                  display: 'inline-block'
+                }}
+              >
+                equally
+              </span>
+            </div>
+
+            {/* Custom display of split list checkmarks for secondary control */}
+            <div style={{ 
+              backgroundColor: 'rgba(255,255,255,0.03)', 
+              borderRadius: '16px', 
+              padding: '16px', 
+              border: '1px solid rgba(255,255,255,0.05)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px'
+            }}>
+              <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.4)', fontWeight: 600, textTransform: 'uppercase' }}>
+                Split participants ({expenseSplits.length})
+              </span>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                {/* Include logged-in user in splits */}
+                <label style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '15px', cursor: 'pointer' }}>
+                  <span style={{ color: expenseSplits.includes(user._id) ? 'white' : 'rgba(255,255,255,0.4)' }}>
+                    You (Split)
+                  </span>
+                  <input 
+                    type="checkbox" 
+                    checked={expenseSplits.includes(user._id)}
+                    onChange={() => {
+                      if (expenseSplits.includes(user._id)) {
+                        setExpenseSplits(expenseSplits.filter(id => id !== user._id));
+                      } else {
+                        setExpenseSplits([...expenseSplits, user._id]);
+                      }
+                    }}
+                    style={{ accentColor: '#1cc29f', width: '16px', height: '16px' }}
+                  />
+                </label>
+
+                {/* Other members */}
+                {selectedGroupDetails?.group?.members?.filter(m => m._id !== user._id).map(m => {
+                  const isChecked = expenseSplits.includes(m._id);
+                  return (
+                    <label key={m._id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', fontSize: '15px', cursor: 'pointer' }}>
+                      <span style={{ color: isChecked ? 'white' : 'rgba(255,255,255,0.4)' }}>
+                        {m.name}
+                      </span>
+                      <input 
+                        type="checkbox" 
+                        checked={isChecked}
+                        onChange={() => {
+                          if (isChecked) {
+                            setExpenseSplits(expenseSplits.filter(id => id !== m._id));
+                          } else {
+                            setExpenseSplits([...expenseSplits, m._id]);
+                          }
+                        }}
+                        style={{ accentColor: '#1cc29f', width: '16px', height: '16px' }}
+                      />
+                    </label>
+                  );
+                })}
+              </div>
+            </div>
+
+          </form>
+
+          {/* 3. Bottom Navigation Toolbar matching mockup */}
+          <div style={{
+            position: 'absolute',
+            bottom: 0, left: 0, right: 0,
+            height: '60px',
+            backgroundColor: '#202124',
+            borderTop: '1px solid rgba(255,255,255,0.08)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '0 20px',
+            zIndex: 120
+          }}>
+            {/* Left: Choose Group Trigger */}
+            <div 
+              onClick={() => setShowGroupSelector(true)}
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                color: '#e57c38', // Orange
+                fontSize: '14.5px',
+                fontWeight: 600,
+                cursor: 'pointer'
+              }}
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e57c38" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+              <span>{selectedGroupDetails?.group?.name ? selectedGroupDetails.group.name : "Choose group"}</span>
+            </div>
+
+            {/* Right: Calendar, Camera, Note */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '18px' }}>
+              {/* Calendar Trigger */}
+              <div 
+                onClick={() => {
+                  setPickerMonth(expenseDate.getMonth());
+                  setPickerYear(expenseDate.getFullYear());
+                  setActiveDatePicker('expense');
+                }}
+                style={{ position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
+              >
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                  <line x1="16" y1="2" x2="16" y2="6" />
+                  <line x1="8" y1="2" x2="8" y2="6" />
+                  <line x1="3" y1="10" x2="21" y2="10" />
+                </svg>
+                {expenseDate.toDateString() !== new Date().toDateString() && (
+                  <span style={{ fontSize: '12px', color: '#1cc29f', fontWeight: 600 }}>
+                    {expenseDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                  </span>
+                )}
               </div>
 
-              <div className="input-group">
-                <label className="input-label">Split equally among</label>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '120px', overflowY: 'auto', padding: '8px', border: '1px solid #e2e8f0', borderRadius: '8px' }}>
-                  {selectedGroupDetails.group.members.map(m => {
-                    const isChecked = expenseSplits.includes(m._id);
-                    return (
-                      <label key={m._id} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', cursor: 'pointer' }}>
-                        <input 
-                          type="checkbox" 
-                          checked={isChecked}
-                          onChange={() => {
-                            if (isChecked) {
-                              setExpenseSplits(expenseSplits.filter(id => id !== m._id));
-                            } else {
-                              setExpenseSplits([...expenseSplits, m._id]);
-                            }
-                          }}
-                        />
-                        {m.name}
-                      </label>
-                    );
-                  })}
+              {/* Camera Icon */}
+              <svg 
+                onClick={() => alert("OCR Bill Scan trigger")}
+                width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }}
+              >
+                <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                <circle cx="12" cy="13" r="4" />
+              </svg>
+
+              {/* Note Icon */}
+              <svg 
+                onClick={() => {
+                  const comment = prompt("Enter comments/notes for this expense:", expenseDesc);
+                  if (comment !== null) setExpenseDesc(comment);
+                }}
+                width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }}
+              >
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+              </svg>
+            </div>
+          </div>
+
+          {/* Group Switcher Overlay Bottom Sheet */}
+          {showGroupSelector && (
+            <div style={{
+              position: 'absolute',
+              top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.65)',
+              zIndex: 160,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'flex-end'
+            }} onClick={() => setShowGroupSelector(false)}>
+              <div 
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: '100%',
+                  backgroundColor: '#1e1f21',
+                  borderTopLeftRadius: '24px',
+                  borderTopRightRadius: '24px',
+                  padding: '24px 20px 32px 20px',
+                  maxHeight: '70%',
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  animation: 'slide-up 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                }}
+              >
+                <h4 style={{ fontSize: '16px', fontWeight: 600, color: 'white', margin: '0 0 20px 0', textAlign: 'center' }}>
+                  Choose a group
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {groups.map(g => (
+                    <div 
+                      key={g._id}
+                      onClick={() => {
+                        setSelectedGroupId(g._id);
+                        fetchGroupDetails(g._id);
+                        if (g.members) {
+                          setExpenseSplits(g.members.map(m => m._id || m));
+                        }
+                        setShowGroupSelector(false);
+                      }}
+                      style={{
+                        padding: '14px 16px',
+                        backgroundColor: selectedGroupId === g._id ? 'rgba(28, 194, 159, 0.12)' : 'rgba(255,255,255,0.03)',
+                        border: selectedGroupId === g._id ? '1px solid #1cc29f' : '1px solid rgba(255,255,255,0.05)',
+                        borderRadius: '12px',
+                        color: 'white',
+                        fontSize: '15px',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                      }}
+                    >
+                      <span>{g.name}</span>
+                      {selectedGroupId === g._id && (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
+            </div>
+          )}
 
-              <div style={{ display: 'flex', gap: '10px', marginTop: '10px' }}>
-                <button type="button" className="btn-secondary" style={{ flex: 1 }} onClick={() => setShowAddExpense(false)}>
-                  Cancel
-                </button>
-                <button type="submit" className="btn-primary" style={{ flex: 1 }}>
-                  Save
-                </button>
+          {/* Payer Selector Overlay Bottom Sheet */}
+          {showPayerSelector && (
+            <div style={{
+              position: 'absolute',
+              top: 0, left: 0, right: 0, bottom: 0,
+              backgroundColor: 'rgba(0, 0, 0, 0.65)',
+              zIndex: 160,
+              display: 'flex',
+              justifyContent: 'center',
+              alignItems: 'flex-end'
+            }} onClick={() => setShowPayerSelector(false)}>
+              <div 
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  width: '100%',
+                  backgroundColor: '#1e1f21',
+                  borderTopLeftRadius: '24px',
+                  borderTopRightRadius: '24px',
+                  padding: '24px 20px 32px 20px',
+                  maxHeight: '60%',
+                  overflowY: 'auto',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  animation: 'slide-up 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+                }}
+              >
+                <h4 style={{ fontSize: '16px', fontWeight: 600, color: 'white', margin: '0 0 20px 0', textAlign: 'center' }}>
+                  Who paid?
+                </h4>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {/* You paid option */}
+                  <div 
+                    onClick={() => {
+                      setExpensePayer(user._id);
+                      setShowPayerSelector(false);
+                    }}
+                    style={{
+                      padding: '14px 16px',
+                      backgroundColor: expensePayer === user._id ? 'rgba(28, 194, 159, 0.12)' : 'rgba(255,255,255,0.03)',
+                      border: expensePayer === user._id ? '1px solid #1cc29f' : '1px solid rgba(255,255,255,0.05)',
+                      borderRadius: '12px',
+                      color: 'white',
+                      fontSize: '15px',
+                      fontWeight: 500,
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between'
+                    }}
+                  >
+                    <span>You</span>
+                    {expensePayer === user._id && (
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                        <polyline points="20 6 9 17 4 12" />
+                      </svg>
+                    )}
+                  </div>
+                  
+                  {/* Other members */}
+                  {selectedGroupDetails?.group?.members?.filter(m => m._id !== user._id).map(m => (
+                    <div 
+                      key={m._id}
+                      onClick={() => {
+                        setExpensePayer(m._id);
+                        setShowPayerSelector(false);
+                      }}
+                      style={{
+                        padding: '14px 16px',
+                        backgroundColor: expensePayer === m._id ? 'rgba(28, 194, 159, 0.12)' : 'rgba(255,255,255,0.03)',
+                        border: expensePayer === m._id ? '1px solid #1cc29f' : '1px solid rgba(255,255,255,0.05)',
+                        borderRadius: '12px',
+                        color: 'white',
+                        fontSize: '15px',
+                        fontWeight: 500,
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'space-between'
+                      }}
+                    >
+                      <span>{m.name}</span>
+                      {expensePayer === m._id && (
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <polyline points="20 6 9 17 4 12" />
+                        </svg>
+                      )}
+                    </div>
+                  ))}
+                </div>
               </div>
-            </form>
-          </div>
+            </div>
+          )}
+
         </div>
       )}
 
@@ -4110,7 +4756,7 @@ export default function App() {
             ];
 
             const isDaySelected = (dNum) => {
-              const targetDate = activeDatePicker === 'start' ? tripStartDate : tripEndDate;
+              const targetDate = activeDatePicker === 'start' ? tripStartDate : activeDatePicker === 'end' ? tripEndDate : expenseDate;
               if (!targetDate) return false;
               const d = new Date(targetDate);
               return d.getFullYear() === pickerYear && d.getMonth() === pickerMonth && d.getDate() === dNum;
@@ -4148,7 +4794,7 @@ export default function App() {
                 
                 {/* Bottom Sheet Card */}
                 <div 
-                  style={{
+                   style={{
                     backgroundColor: '#1e1f21',
                     borderTopLeftRadius: '24px',
                     borderTopRightRadius: '24px',
@@ -4170,7 +4816,7 @@ export default function App() {
                     margin: '0 0 20px 0',
                     color: 'white'
                   }}>
-                    {activeDatePicker === 'start' ? 'Start date' : 'End date'}
+                    {activeDatePicker === 'start' ? 'Start date' : activeDatePicker === 'end' ? 'End date' : 'Expense date'}
                   </h3>
 
                   {/* Month Navigation Row */}
@@ -4247,8 +4893,10 @@ export default function App() {
                             const selectedDate = new Date(pickerYear, pickerMonth, dNum);
                             if (activeDatePicker === 'start') {
                               setTripStartDate(selectedDate);
-                            } else {
+                            } else if (activeDatePicker === 'end') {
                               setTripEndDate(selectedDate);
+                            } else if (activeDatePicker === 'expense') {
+                              setExpenseDate(selectedDate);
                             }
                             setActiveDatePicker(null);
                           }}

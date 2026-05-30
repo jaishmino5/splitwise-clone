@@ -244,6 +244,33 @@ const db = {
     }
   },
 
+  async updateGroup(id, updateData) {
+    if (useMongoDB) {
+      return await GroupModel.findByIdAndUpdate(id, updateData, { new: true }).populate('members');
+    } else {
+      const data = loadJsonDb();
+      const idx = data.groups.findIndex(g => g._id === id.toString());
+      if (idx === -1) return null;
+      
+      const updatedGroup = {
+        ...data.groups[idx],
+        ...updateData
+      };
+      
+      if (updatedGroup.members) {
+        updatedGroup.members = updatedGroup.members.map(m => m.toString());
+      }
+      
+      data.groups[idx] = updatedGroup;
+      saveJsonDb(data);
+      
+      return {
+        ...updatedGroup,
+        members: updatedGroup.members.map(memberId => data.users.find(u => u._id === memberId))
+      };
+    }
+  },
+
   // Expenses
   async getExpenses(groupId) {
     if (useMongoDB) {
