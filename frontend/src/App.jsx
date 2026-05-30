@@ -478,6 +478,7 @@ export default function App() {
         setShowAddFriend(false);
         setFriendName('');
         setFriendEmail('');
+        await fetchUsers();
         await fetchDashboardData();
       } else {
         const data = await res.json();
@@ -572,6 +573,7 @@ export default function App() {
               }
             }
           }
+          await fetchUsers();
           if (contactsPickerMode === 'group') {
             if (selectedGroupId) {
               await fetchGroupDetails(selectedGroupId);
@@ -666,6 +668,7 @@ export default function App() {
               }
             }
           }
+          await fetchUsers();
           if (contactsPickerMode === 'group') {
             if (selectedGroupId) {
               await fetchGroupDetails(selectedGroupId);
@@ -707,6 +710,7 @@ export default function App() {
       });
       if (res.ok) {
         const newFriend = await res.json();
+        await fetchUsers();
         if (contactsPickerMode === 'group') {
           if (newFriend && newFriend._id) {
             if (selectedGroupId) {
