@@ -195,13 +195,145 @@ async function getGroupBalancesAndDebts(groupId, currentUserId) {
   };
 }
 
+// Helper function to calculate net balances between two users across all shared groups
+async function getFriendBalances(userId, friendId) {
+  const groups = await db.getGroups();
+  let totalOweToFriend = 0;
+  let totalOwedByFriend = 0;
+  
+  for (const group of groups) {
+    const balanceData = await getGroupBalancesAndDebts(group._id, userId);
+    if (balanceData && balanceData.currentUserStatus) {
+      const status = balanceData.currentUserStatus;
+      
+      const oweTo = status.owesTo.find(o => o.user && o.user._id.toString() === friendId.toString());
+      if (oweTo) {
+        totalOweToFriend += oweTo.amount;
+      }
+      
+      const owedBy = status.owedBy.find(o => o.user && o.user._id.toString() === friendId.toString());
+      if (owedBy) {
+        totalOwedByFriend += owedBy.amount;
+      }
+    }
+  }
+  
+  const net = Math.round((totalOwedByFriend - totalOweToFriend) * 100) / 100;
+  let text = "no expenses";
+  if (net > 0) {
+    text = `you are owed $${net.toFixed(2)}`;
+  } else if (net < 0) {
+    text = `you owe $${Math.abs(net).toFixed(2)}`;
+  }
+  
+  return {
+    owe: Math.round(totalOweToFriend * 100) / 100,
+    owed: Math.round(totalOwedByFriend * 100) / 100,
+    netBalance: net,
+    type: net > 0 ? 'owed' : net < 0 ? 'owe' : 'settled',
+    text
+  };
+}
+
 // --- API Routes ---
+
+// Friends API Routes
+app.get('/api/users/:userId/friends', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const friends = await db.getFriends(userId);
+    const populatedFriends = [];
+    
+    for (const friend of friends) {
+      const friendObj = typeof friend.toObject === 'function' ? friend.toObject() : friend;
+      const balanceDetails = await getFriendBalances(userId, friend._id);
+      populatedFriends.push({
+        ...friendObj,
+        balance: balanceDetails
+      });
+    }
+    
+    res.json(populatedFriends);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.post('/api/users/:userId/friends', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { name, email } = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ error: "Friend's name is required" });
+    }
+    
+    let friendUser = null;
+    if (email) {
+      friendUser = await db.getUserByEmail(email);
+    }
+    
+    if (!friendUser) {
+      // Create shadow user (contact friend)
+      const bcrypt = require('bcryptjs');
+      const crypto = require('crypto');
+      const randomPassword = crypto.randomBytes(16).toString('hex');
+      const hashedPassword = await bcrypt.hash(randomPassword, 10);
+      
+      const emailToUse = email || `contact_${Date.now()}_${Math.random().toString(36).substring(2, 7)}@splitwise.demo`;
+      
+      friendUser = await db.createUser({
+        name,
+        email: emailToUse,
+        password: hashedPassword,
+        avatarUrl: `https://api.dicebear.com/7.x/adventurer/svg?seed=${name}`
+      });
+    }
+    
+    // Add friendship relationship mutually
+    await db.addFriend(userId, friendUser._id);
+    
+    const friendObj = typeof friendUser.toObject === 'function' ? friendUser.toObject() : friendUser;
+    const balanceDetails = await getFriendBalances(userId, friendUser._id);
+    
+    res.status(201).json({
+      ...friendObj,
+      balance: balanceDetails
+    });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
 
 // 1. Authentication / User selection
 app.get('/api/users', async (req, res) => {
   try {
     const users = await db.getUsers();
     res.json(users);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.put('/api/users/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { name, email, avatarUrl } = req.body;
+    
+    if (email) {
+      const existing = await db.getUserByEmail(email);
+      if (existing && existing._id.toString() !== userId.toString()) {
+        return res.status(400).json({ error: "Email is already in use" });
+      }
+    }
+    
+    const updatedUser = await db.updateUser(userId, { name, email, avatarUrl });
+    if (!updatedUser) {
+      return res.status(404).json({ error: "User not found" });
+    }
+    
+    const userObj = typeof updatedUser.toObject === 'function' ? updatedUser.toObject() : updatedUser;
+    res.json(userObj);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -261,8 +393,10 @@ app.post('/api/auth/google', async (req, res) => {
       return res.status(400).json({ error: "Email not provided by Google account" });
     }
 
+    let isNewUser = false;
     let user = await db.getUserByEmail(email);
     if (!user) {
+      isNewUser = true;
       // Auto-register new Google user with a secure random password
       const crypto = require('crypto');
       const randomPassword = crypto.randomBytes(16).toString('hex');
@@ -276,7 +410,8 @@ app.post('/api/auth/google', async (req, res) => {
       });
     }
 
-    res.json(user);
+    const userObj = typeof user.toObject === 'function' ? user.toObject() : user;
+    res.json({ ...userObj, isNewUser });
   } catch (err) {
     console.error("Google Auth Error:", err);
     res.status(400).json({ error: "Google authentication failed" });
@@ -304,20 +439,30 @@ app.post('/api/auth/signup', async (req, res) => {
       password: hashedPassword,
       avatarUrl: `https://api.dicebear.com/7.x/adventurer/svg?seed=${name}`
     });
-    res.status(201).json(user);
+    const userObj = typeof user.toObject === 'function' ? user.toObject() : user;
+    res.status(201).json({ ...userObj, isNewUser: true });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 });
 
-// 2. Groups
 app.get('/api/groups', async (req, res) => {
   try {
     const currentUserId = req.query.userId;
     const groups = await db.getGroups();
 
+    // Filter groups so that a user only sees groups they are a member of
+    let filteredGroups = groups;
+    if (currentUserId) {
+      filteredGroups = groups.filter(group => 
+        group.members && group.members.some(member => 
+          member && member._id && member._id.toString() === currentUserId.toString()
+        )
+      );
+    }
+
     // Map each group to include the current user's specific status (owe/owed)
-    const groupsWithStatus = await Promise.all(groups.map(async (group) => {
+    const groupsWithStatus = await Promise.all(filteredGroups.map(async (group) => {
       const balanceData = await getGroupBalancesAndDebts(group._id, currentUserId);
       const groupObj = typeof group.toObject === 'function' ? group.toObject() : group;
       return {
