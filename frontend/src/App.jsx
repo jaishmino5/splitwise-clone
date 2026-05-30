@@ -155,6 +155,7 @@ export default function App() {
   const [showPermissionDialog, setShowPermissionDialog] = useState(false);
   const [contactsPickerMode, _setContactsPickerMode] = useState('friend'); // 'friend' or 'group'
   const contactsPickerModeRef = React.useRef('friend');
+  const settleAmountInputRef = React.useRef(null);
   const setContactsPickerMode = (mode) => {
     contactsPickerModeRef.current = mode;
     _setContactsPickerMode(mode);
@@ -5359,28 +5360,44 @@ export default function App() {
                   
                   {/* Dynamic sizing styled input */}
                   <input 
+                    ref={settleAmountInputRef}
                     type="number" 
                     step="0.01"
                     value={settleAmount}
                     onChange={(e) => setSettleAmount(e.target.value)}
+                    onClick={() => {
+                      if (settleAmountInputRef.current) {
+                        settleAmountInputRef.current.select();
+                      }
+                    }}
                     required
                     style={{
                       background: 'transparent',
                       border: 'none',
+                      borderBottom: '1.5px dashed rgba(255, 255, 255, 0.35)',
                       color: 'white',
                       fontSize: '44px',
                       fontWeight: 700,
                       textAlign: 'center',
                       width: `${Math.max(settleAmount.toString().length * 24 + 10, 160)}px`,
                       outline: 'none',
-                      padding: 0,
+                      padding: '0 4px',
                       margin: 0,
-                      fontFamily: 'var(--font-display)'
+                      fontFamily: 'var(--font-display)',
+                      caretColor: '#1cc29f',
+                      cursor: 'pointer'
                     }}
                   />
 
                   {/* Edit Pencil Icon */}
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255, 255, 255, 0.6)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer', marginLeft: '4px' }}>
+                  <svg 
+                    onClick={() => {
+                      if (settleAmountInputRef.current) {
+                        settleAmountInputRef.current.focus();
+                        settleAmountInputRef.current.select();
+                      }
+                    }}
+                    width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255, 255, 255, 0.6)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer', marginLeft: '4px' }}>
                     <path d="M12 20h9" />
                     <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
                   </svg>
