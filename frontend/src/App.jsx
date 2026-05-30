@@ -70,6 +70,7 @@ export default function App() {
   const [showSettleUp, setShowSettleUp] = useState(false);
   const [showAddGroup, setShowAddGroup] = useState(false);
   const [showAddFriend, setShowAddFriend] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [termsBackPage, setTermsBackPage] = useState('landing');
 
   // Friends & Search State
@@ -420,6 +421,28 @@ export default function App() {
     } catch (err) {
       console.error("Error adding friend:", err);
     }
+  };
+
+  const handleShareGroupLink = async () => {
+    const inviteUrl = `${window.location.origin}/join-group/${selectedGroupDetails?.group?._id || ''}`;
+    const shareText = `Hey! Join our "${selectedGroupDetails?.group?.name || 'Splitwise'}" group on Splitwise to split bills and expenses easily!`;
+
+    // 1. Primary Action: Web Share API if supported natively on mobile
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: `Join ${selectedGroupDetails?.group?.name || 'Group'}`,
+          text: shareText,
+          url: inviteUrl
+        });
+        return; // Success! Native sharing completed.
+      } catch (err) {
+        console.log("Web Share API cancelled or failed:", err);
+      }
+    }
+
+    // 2. Fallback Action: Show custom, premium Splitwise Share Menu Modal
+    setShowShareModal(true);
   };
 
   const handleOpenAddFriend = async () => {
@@ -3225,7 +3248,7 @@ export default function App() {
 
                 {/* Button 2: Share group link */}
                 <div 
-                  onClick={() => alert("Group invitation link copied to clipboard! (Demo)")}
+                  onClick={handleShareGroupLink}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
@@ -4574,6 +4597,217 @@ export default function App() {
             </div>
           )}
 
+        </div>
+      )}
+
+      {/* Share Group Invite Link Modal (Custom Share Sheet matching native mockup) */}
+      {showShareModal && (
+        <div style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.6)',
+          zIndex: 200,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'flex-end'
+        }} onClick={() => setShowShareModal(false)}>
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              width: '100%',
+              backgroundColor: '#18191b',
+              borderTopLeftRadius: '24px',
+              borderTopRightRadius: '24px',
+              padding: '24px 20px 32px 20px',
+              boxShadow: '0 -10px 30px rgba(0,0,0,0.5)',
+              display: 'flex',
+              flexDirection: 'column',
+              animation: 'slide-up 0.25s cubic-bezier(0.34, 1.56, 0.64, 1)'
+            }}
+          >
+            {/* Header label */}
+            <h4 style={{ 
+              fontSize: '15px', 
+              fontWeight: 500, 
+              color: 'rgba(255, 255, 255, 0.6)', 
+              margin: '0 0 24px 0', 
+              textAlign: 'left',
+              fontFamily: 'var(--font-body)'
+            }}>
+              Share invite link via...
+            </h4>
+
+            {/* Grid of sharing options (Copy Link, WhatsApp, Gmail, SMS Messages) */}
+            <div style={{ 
+              display: 'grid', 
+              gridTemplateColumns: 'repeat(4, 1fr)', 
+              gap: '16px',
+              marginBottom: '24px'
+            }}>
+              
+              {/* 1. Copy Link */}
+              <div 
+                onClick={() => {
+                  const inviteUrl = `${window.location.origin}/join-group/${selectedGroupDetails?.group?._id || ''}`;
+                  navigator.clipboard.writeText(inviteUrl);
+                  alert("Group invitation link copied to clipboard!");
+                  setShowShareModal(false);
+                }}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{
+                  width: '54px',
+                  height: '54px',
+                  borderRadius: '50%',
+                  backgroundColor: '#2d3035',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  transition: 'background-color 0.2s'
+                }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                  </svg>
+                </div>
+                <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)', textAlign: 'center' }}>
+                  Copy Link
+                </span>
+              </div>
+
+              {/* 2. WhatsApp */}
+              <div 
+                onClick={() => {
+                  const inviteUrl = `${window.location.origin}/join-group/${selectedGroupDetails?.group?._id || ''}`;
+                  const shareText = `Hey! Join our "${selectedGroupDetails?.group?.name || 'Splitwise'}" group on Splitwise to split bills and expenses easily!`;
+                  window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(shareText + ' ' + inviteUrl)}`, '_blank');
+                  setShowShareModal(false);
+                }}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{
+                  width: '54px',
+                  height: '54px',
+                  borderRadius: '50%',
+                  backgroundColor: '#10b981',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+                  </svg>
+                </div>
+                <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)', textAlign: 'center' }}>
+                  WhatsApp
+                </span>
+              </div>
+
+              {/* 3. Gmail */}
+              <div 
+                onClick={() => {
+                  const inviteUrl = `${window.location.origin}/join-group/${selectedGroupDetails?.group?._id || ''}`;
+                  const shareText = `Hey! Join our "${selectedGroupDetails?.group?.name || 'Splitwise'}" group on Splitwise to split bills and expenses easily!`;
+                  window.open(`mailto:?subject=${encodeURIComponent('Join my Splitwise group')}&body=${encodeURIComponent(shareText + '\n\nClick here to join: ' + inviteUrl)}`, '_blank');
+                  setShowShareModal(false);
+                }}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{
+                  width: '54px',
+                  height: '54px',
+                  borderRadius: '50%',
+                  backgroundColor: '#ef4444',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                    <polyline points="22,6 12,13 2,6" />
+                  </svg>
+                </div>
+                <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)', textAlign: 'center' }}>
+                  Gmail
+                </span>
+              </div>
+
+              {/* 4. SMS Messages */}
+              <div 
+                onClick={() => {
+                  const inviteUrl = `${window.location.origin}/join-group/${selectedGroupDetails?.group?._id || ''}`;
+                  const shareText = `Hey! Join our "${selectedGroupDetails?.group?.name || 'Splitwise'}" group on Splitwise to split bills and expenses easily!`;
+                  window.open(`sms:?&body=${encodeURIComponent(shareText + ' ' + inviteUrl)}`, '_blank');
+                  setShowShareModal(false);
+                }}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer'
+                }}
+              >
+                <div style={{
+                  width: '54px',
+                  height: '54px',
+                  borderRadius: '50%',
+                  backgroundColor: '#3b82f6',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  </svg>
+                </div>
+                <span style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.8)', textAlign: 'center' }}>
+                  Messages
+                </span>
+              </div>
+
+            </div>
+
+            {/* Cancel Button */}
+            <button 
+              onClick={() => setShowShareModal(false)}
+              style={{
+                width: '100%',
+                backgroundColor: '#2d3035',
+                color: 'white',
+                border: 'none',
+                borderRadius: '12px',
+                padding: '14px 0',
+                fontSize: '15px',
+                fontWeight: 600,
+                cursor: 'pointer',
+                outline: 'none',
+                transition: 'background-color 0.2s'
+              }}
+              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#3c4046'}
+              onMouseLeave={(e) => e.currentTarget.style.backgroundColor = '#2d3035'}
+            >
+              Cancel
+            </button>
+          </div>
         </div>
       )}
 
