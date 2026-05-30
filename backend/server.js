@@ -292,6 +292,10 @@ app.post('/api/users/:userId/friends', async (req, res) => {
     
     // Add friendship relationship mutually
     await db.addFriend(userId, friendUser._id);
+
+    // Sync friend list to the special 'Non-group expenses' group for both users immediately!
+    await ensureNonGroupExpensesGroup(userId);
+    await ensureNonGroupExpensesGroup(friendUser._id);
     
     const friendObj = typeof friendUser.toObject === 'function' ? friendUser.toObject() : friendUser;
     const balanceDetails = await getFriendBalances(userId, friendUser._id);
@@ -446,9 +450,48 @@ app.post('/api/auth/signup', async (req, res) => {
   }
 });
 
+// Helper to automatically create and synchronize a 'Non-group expenses' group for a user and their friends
+async function ensureNonGroupExpensesGroup(userId) {
+  if (!userId) return null;
+  const groups = await db.getGroups();
+  
+  // Find if there is an existing "Non-group expenses" group involving this user
+  let nonGroupGroup = groups.find(g => 
+    g && g.name && (g.name.toLowerCase() === "non-group expenses" || g.name.toLowerCase() === "non-group expense") &&
+    g.members.some(m => m && m._id && m._id.toString() === userId.toString())
+  );
+  
+  // Fetch user's friends list
+  const friends = await db.getFriends(userId);
+  const friendIds = friends.map(f => f._id.toString());
+  const finalMemberIds = Array.from(new Set([userId.toString(), ...friendIds]));
+  
+  if (!nonGroupGroup) {
+    // Create the special "Non-group expenses" group
+    nonGroupGroup = await db.createGroup({
+      name: "Non-group expenses",
+      description: "Personal and direct splits outside any group",
+      members: finalMemberIds
+    });
+  } else {
+    // Ensure all friends are synced as members in the database
+    const currentMemberIds = nonGroupGroup.members.map(m => m._id.toString());
+    const needsUpdate = finalMemberIds.some(id => !currentMemberIds.includes(id));
+    if (needsUpdate) {
+      const mergedMembers = Array.from(new Set([...currentMemberIds, ...finalMemberIds]));
+      await db.updateGroup(nonGroupGroup._id, { members: mergedMembers });
+      nonGroupGroup = await db.getGroupById(nonGroupGroup._id);
+    }
+  }
+  return nonGroupGroup;
+}
+
 app.get('/api/groups', async (req, res) => {
   try {
     const currentUserId = req.query.userId;
+    if (currentUserId) {
+      await ensureNonGroupExpensesGroup(currentUserId);
+    }
     const groups = await db.getGroups();
 
     // Filter groups so that a user only sees groups they are a member of
