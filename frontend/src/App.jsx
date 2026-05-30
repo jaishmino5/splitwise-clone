@@ -48,6 +48,38 @@ const initialSimulatedContacts = [
   { name: "Siddharth Malhotra", phone: "+919234567890" }
 ];
 
+const getCategoryIcon = (desc) => {
+  const d = (desc || '').toLowerCase();
+  if (d.includes('travel') || d.includes('car') || d.includes('taxi') || d.includes('flight') || d.includes('plane') || d.includes('trip') || d.includes('bus') || d.includes('fuel')) {
+    return {
+      bg: '#ffdee2', // Pinkish background matching travel category
+      border: '1.2px solid rgba(236, 72, 153, 0.4)',
+      color: '#e11d48', // Rose color icon
+      icon: (
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M19 17h2c.6 0 1-.4 1-1v-3c0-.9-.7-1.7-1.5-1.9C18.7 10.6 16 10 16 10s-1.3-1.4-2.2-2.3c-.5-.4-1.1-.7-1.8-.7H5c-.6 0-1.1.4-1.4.9l-1.4 2.9A3.7 3.7 0 0 0 2 12v4c0 .6.4 1 1 1h2" />
+          <circle cx="7" cy="17" r="2" />
+          <circle cx="17" cy="17" r="2" />
+        </svg>
+      )
+    };
+  }
+  // Default generic document/receipt icon
+  return {
+    bg: 'rgba(255, 255, 255, 0.04)',
+    border: '1.2px solid rgba(255,255,255,0.15)',
+    color: 'white',
+    icon: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+        <polyline points="14 2 14 8 20 8" />
+        <line x1="16" y1="13" x2="8" y2="13" />
+        <line x1="16" y1="17" x2="8" y2="17" />
+      </svg>
+    )
+  };
+};
+
 export default function App() {
   // Navigation and Session State
   const [user, setUser] = useState(null); // Current user
@@ -3695,79 +3727,115 @@ export default function App() {
             {/* Search/Participant container */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', fontSize: '15px' }}>
-                <span style={{ color: 'rgba(255, 255, 255, 0.6)' }}>With <strong>you</strong> and:</span>
+                <span style={{ color: 'rgba(255, 255, 255, 0.6)', marginRight: '2px' }}>With <strong>you</strong> and:</span>
                 
-                {/* Display currently selected friends/members as tags */}
-                {users.filter(u => expenseSplits.includes(u._id) && u._id !== user._id).map(u => (
-                  <span 
-                    key={u._id}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '4px',
-                      backgroundColor: 'rgba(28, 194, 159, 0.15)',
-                      border: '1px solid rgba(28, 194, 159, 0.4)',
-                      padding: '4px 10px',
-                      borderRadius: '100px',
-                      fontSize: '13px',
-                      fontWeight: 500,
-                      color: '#1cc29f'
-                    }}
-                  >
-                    {u.name}
-                    <svg 
-                      onClick={() => {
-                        setExpenseSplits(expenseSplits.filter(id => id !== u._id));
-                      }}
-                      width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
-                      style={{ cursor: 'pointer', marginLeft: '2px' }}
-                    >
-                      <line x1="18" y1="6" x2="6" y2="18" />
-                      <line x1="6" y1="6" x2="18" y2="18" />
-                    </svg>
-                  </span>
-                ))}
-
-                {/* Input field which opens custom contact picker */}
-                <input 
-                  type="text"
-                  placeholder="Enter names, emails, or phone..."
-                  onClick={() => {
-                    setContactsPickerMode('expense');
-                    handleOpenAddFriend();
-                  }}
-                  readOnly
-                  style={{
-                    backgroundColor: 'transparent',
-                    border: 'none',
+                {selectedGroupId && selectedGroupDetails?.group ? (
+                  /* Single premium group pill badge representing "All of [GroupName]" */
+                  <div style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                    backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                    border: '1px solid rgba(255, 255, 255, 0.15)',
+                    padding: '4px 12px 4px 6px',
+                    borderRadius: '100px',
+                    fontSize: '14px',
+                    fontWeight: 500,
                     color: 'white',
-                    fontSize: '15px',
-                    outline: 'none',
-                    flex: 1,
-                    minWidth: '150px',
-                    cursor: 'pointer'
-                  }}
-                />
+                    userSelect: 'none'
+                  }}>
+                    {/* Circle Avatar with red gradient and white plane icon */}
+                    <div style={{
+                      width: '24px',
+                      height: '24px',
+                      borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #a8203c 0%, #5d0f1e 100%)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5S19 4 17.5 5.5L14 9 5.8 7.2 4.2 8.8l8 4.7-4 4-2.8-.7L4 18.2l3.5 1.3 1.3 3.5 1.4-1.4-.7-2.8 4-4 4.7 8 1.6-1.6z" />
+                      </svg>
+                    </div>
+                    <span>All of {selectedGroupDetails.group.name}</span>
+                  </div>
+                ) : (
+                  <>
+                    {/* Display currently selected friends/members as tags */}
+                    {users.filter(u => expenseSplits.includes(u._id) && u._id !== user._id).map(u => (
+                      <span 
+                        key={u._id}
+                        style={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          gap: '4px',
+                          backgroundColor: 'rgba(28, 194, 159, 0.15)',
+                          border: '1px solid rgba(28, 194, 159, 0.4)',
+                          padding: '4px 10px',
+                          borderRadius: '100px',
+                          fontSize: '13px',
+                          fontWeight: 500,
+                          color: '#1cc29f'
+                        }}
+                      >
+                        {u.name}
+                        <svg 
+                          onClick={() => {
+                            setExpenseSplits(expenseSplits.filter(id => id !== u._id));
+                          }}
+                          width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"
+                          style={{ cursor: 'pointer', marginLeft: '2px' }}
+                        >
+                          <line x1="18" y1="6" x2="6" y2="18" />
+                          <line x1="6" y1="6" x2="18" y2="18" />
+                        </svg>
+                      </span>
+                    ))}
+
+                    {/* Input field which opens custom contact picker */}
+                    <input 
+                      type="text"
+                      placeholder="Enter names, emails, or phone..."
+                      onClick={() => {
+                        setContactsPickerMode('expense');
+                        handleOpenAddFriend();
+                      }}
+                      readOnly
+                      style={{
+                        backgroundColor: 'transparent',
+                        border: 'none',
+                        color: 'white',
+                        fontSize: '15px',
+                        outline: 'none',
+                        flex: 1,
+                        minWidth: '150px',
+                        cursor: 'pointer'
+                      }}
+                    />
+                  </>
+                )}
               </div>
               <div style={{ height: '1px', backgroundColor: 'rgba(255,255,255,0.08)', marginTop: '4px' }} />
             </div>
 
-            {/* Description Section with Receipt Icon */}
+            {/* Description Section with DYNAMIC Category Icon */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-              <div style={{
-                width: '40px', height: '40px', borderRadius: '8px',
-                border: '1.2px solid rgba(255,255,255,0.15)',
-                display: 'flex', alignItems: 'center', justifyItems: 'center',
-                justifyContent: 'center', backgroundColor: '#202124'
-              }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                  <polyline points="14 2 14 8 20 8" />
-                  <line x1="16" y1="13" x2="8" y2="13" />
-                  <line x1="16" y1="17" x2="8" y2="17" />
-                  <polyline points="10 9 9 9 8 9" />
-                </svg>
-              </div>
+              {(() => {
+                const categoryDetails = getCategoryIcon(expenseDesc);
+                return (
+                  <div style={{
+                    width: '40px', height: '40px', borderRadius: '8px',
+                    border: categoryDetails.border,
+                    display: 'flex', alignItems: 'center', justifyItems: 'center',
+                    justifyContent: 'center', backgroundColor: categoryDetails.bg,
+                    color: categoryDetails.color,
+                    transition: 'all 0.2s ease'
+                  }}>
+                    {categoryDetails.icon}
+                  </div>
+                );
+              })()}
               <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                 <input 
                   type="text" 
@@ -3823,41 +3891,25 @@ export default function App() {
               </div>
             </div>
 
-            {/* Paid By and Split equally info row */}
-            <div style={{ textAlign: 'center', margin: '12px 0', fontSize: '15px', color: 'rgba(255,255,255,0.8)' }}>
-              Paid by {' '}
-              <span 
+            {/* Centered Paid By and Split button matching mockup */}
+            <div style={{ display: 'flex', justifyContent: 'center', margin: '8px 0' }}>
+              <div 
                 onClick={() => setShowPayerSelector(true)}
                 style={{
-                  backgroundColor: 'rgba(28, 194, 159, 0.12)',
-                  border: '1px solid #1cc29f',
-                  color: '#1cc29f',
-                  padding: '4px 12px',
-                  borderRadius: '6px',
-                  fontWeight: 600,
-                  cursor: 'pointer',
-                  marginLeft: '4px',
-                  marginRight: '4px',
-                  display: 'inline-block'
-                }}
-              >
-                {expensePayer === user._id ? 'you' : (users.find(u => u._id === expensePayer)?.name || 'someone')}
-              </span>
-              {' '} and split {' '}
-              <span 
-                style={{
-                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
-                  border: '1px solid rgba(255, 255, 255, 0.15)',
+                  backgroundColor: 'rgba(255, 255, 255, 0.03)',
+                  border: '1px solid rgba(255, 255, 255, 0.12)',
+                  borderRadius: '8px',
+                  padding: '10px 24px',
+                  fontSize: '14.5px',
                   color: 'white',
-                  padding: '4px 12px',
-                  borderRadius: '6px',
-                  fontWeight: 600,
-                  marginLeft: '4px',
-                  display: 'inline-block'
+                  cursor: 'pointer',
+                  textAlign: 'center',
+                  transition: 'background-color 0.2s',
+                  userSelect: 'none'
                 }}
               >
-                equally
-              </span>
+                Paid by <span style={{ color: '#1cc29f', fontWeight: 600 }}>{expensePayer === user._id ? 'you' : (users.find(u => u._id === expensePayer)?.name || 'someone')}</span> and <span style={{ fontWeight: 600 }}>split equally</span>.
+              </div>
             </div>
 
             {/* Custom display of split list checkmarks for secondary control */}
@@ -3941,19 +3993,18 @@ export default function App() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '8px',
-                color: '#e57c38', // Orange
-                fontSize: '14.5px',
-                fontWeight: 600,
                 cursor: 'pointer'
               }}
             >
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e57c38" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#e57c38" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
                 <circle cx="9" cy="7" r="4" />
                 <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
                 <path d="M16 3.13a4 4 0 0 1 0 7.75" />
               </svg>
-              <span>{selectedGroupDetails?.group?.name ? selectedGroupDetails.group.name : "Choose group"}</span>
+              <span style={{ color: 'white', fontSize: '15px', fontWeight: 600 }}>
+                {selectedGroupDetails?.group?.name ? selectedGroupDetails.group.name : "Choose group"}
+              </span>
             </div>
 
             {/* Right: Calendar, Camera, Note */}
@@ -3967,14 +4018,14 @@ export default function App() {
                 }}
                 style={{ position: 'relative', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px' }}
               >
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#4dadf7" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
                   <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
                   <line x1="16" y1="2" x2="16" y2="6" />
                   <line x1="8" y1="2" x2="8" y2="6" />
                   <line x1="3" y1="10" x2="21" y2="10" />
                 </svg>
                 {expenseDate.toDateString() !== new Date().toDateString() && (
-                  <span style={{ fontSize: '12px', color: '#1cc29f', fontWeight: 600 }}>
+                  <span style={{ fontSize: '12px', color: '#4dadf7', fontWeight: 600 }}>
                     {expenseDate.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
                   </span>
                 )}
@@ -3983,7 +4034,7 @@ export default function App() {
               {/* Camera Icon */}
               <svg 
                 onClick={() => alert("OCR Bill Scan trigger")}
-                width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }}
+                width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#c084fc" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }}
               >
                 <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
                 <circle cx="12" cy="13" r="4" />
@@ -3995,7 +4046,7 @@ export default function App() {
                   const comment = prompt("Enter comments/notes for this expense:", expenseDesc);
                   if (comment !== null) setExpenseDesc(comment);
                 }}
-                width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }}
+                width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#34d399" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer' }}
               >
                 <path d="M12 20h9" />
                 <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
