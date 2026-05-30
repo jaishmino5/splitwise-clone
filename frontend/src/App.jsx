@@ -91,7 +91,7 @@ export default function App() {
       if (elapsed < oneDayMs) {
         try {
           return JSON.parse(savedUser);
-        } catch (e) {
+        } catch {
           return null;
         }
       } else {
@@ -153,7 +153,7 @@ export default function App() {
   const [contactsPermission, setContactsPermission] = useState(() => localStorage.getItem('splitwise_contacts_permission') || 'prompt');
   const [searchContactQuery, setSearchContactQuery] = useState('');
   const [showPermissionDialog, setShowPermissionDialog] = useState(false);
-  const [contactsPickerMode, _setContactsPickerMode] = useState('friend'); // 'friend' or 'group'
+  const [, _setContactsPickerMode] = useState('friend'); // 'friend' or 'group'
   const contactsPickerModeRef = React.useRef('friend');
   const settleAmountInputRef = React.useRef(null);
   const setContactsPickerMode = (mode) => {
@@ -213,9 +213,7 @@ export default function App() {
   const [pickerMonth, setPickerMonth] = useState(4); // May (0-indexed 4)
   const [pickerYear, setPickerYear] = useState(2026);
 
-  // Add Friend Form Inputs
-  const [friendName, setFriendName] = useState('');
-  const [friendEmail, setFriendEmail] = useState('');
+
 
   // Edit Profile Form Inputs & Modals State
   const [showEditProfile, setShowEditProfile] = useState(false);
@@ -563,33 +561,7 @@ export default function App() {
     }
   };
 
-  // Add Friend Action
-  const handleAddFriend = async (e) => {
-    e.preventDefault();
-    if (!friendName) return;
-    try {
-      const res = await fetch(`${API_BASE}/users/${user._id}/friends`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: friendName,
-          email: friendEmail
-        })
-      });
-      if (res.ok) {
-        setShowAddFriend(false);
-        setFriendName('');
-        setFriendEmail('');
-        await fetchUsers();
-        await fetchDashboardData();
-      } else {
-        const data = await res.json();
-        alert(data.error || "Failed to add friend");
-      }
-    } catch (err) {
-      console.error("Error adding friend:", err);
-    }
-  };
+  // handleAddFriend removed since friends are added via handleCreateFriendDirect
 
   const handleShareGroupLink = async () => {
     const inviteUrl = `${window.location.origin}/join-group/${selectedGroupDetails?.group?._id || ''}`;
@@ -3807,7 +3779,7 @@ export default function App() {
 
                       {/* List of items inside this month */}
                       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                        {groupedObj[monthName].map((item, idx) => {
+                        {groupedObj[monthName].map((item) => {
                           const isExpense = item.type === 'expense';
                           
                           if (isExpense) {

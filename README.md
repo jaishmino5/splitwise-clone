@@ -10,12 +10,12 @@ This project was developed in partnership with **Antigravity** (Google DeepMind'
 
 1. **Public Deployed App URL:** 
    - Deployed Frontend: [https://splitwise-jaish.vercel.app](https://splitwise-jaish.vercel.app) (Fallback: [https://splitwise-chitraksh.vercel.app](https://splitwise-chitraksh.vercel.app))
-   - Deployed API Backend: [https://splitwise-backend.onrender.com](https://splitwise-backend.onrender.com) (or your Render/Vercel API URL)
+   - Deployed API Backend: [https://splitwise-backend.onrender.com](https://splitwise-backend.onrender.com)
 2. **GitHub Repository:** [https://github.com/jaishmino5/splitwise-clone](https://github.com/jaishmino5/splitwise-clone)
 3. **AI Development Collaborator:** Antigravity (Google DeepMind Advanced Agentic Coding)
 4. **Source of Truth Context File:** [AI_CONTEXT.md](./AI_CONTEXT.md)
 5. **Project Build Plan:** [BUILD_PLAN.md](./BUILD_PLAN.md)
-6. **Key Development Prompts:** Included in the [AI Collaboration](#-ai-collaboration-details) section below.
+6. **Key Development Prompts:** [PROMPTS.md](./PROMPTS.md)
 
 ---
 
