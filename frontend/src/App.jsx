@@ -101,6 +101,8 @@ export default function App() {
   const [showGroupSelector, setShowGroupSelector] = useState(false);
   const [showPayerSelector, setShowPayerSelector] = useState(false);
   const [activities, setActivities] = useState([]);
+  const [showGroupSettings, setShowGroupSettings] = useState(false);
+  const [simplifyDebts, setSimplifyDebts] = useState(false);
 
   // Settle Up Form Inputs
   const [settleFrom, setSettleFrom] = useState('');
@@ -3109,7 +3111,7 @@ export default function App() {
 
               {/* Settings Cog */}
               <div 
-                onClick={() => alert("Group Settings coming soon in premium v2! (Success)")}
+                onClick={() => setShowGroupSettings(true)}
                 style={{
                   width: '38px',
                   height: '38px',
@@ -3131,45 +3133,73 @@ export default function App() {
                 {selectedGroupDetails.group.name}
               </h3>
               
-              {/* Jun 1 - 16 Date Range Pill */}
-              {(() => {
-                const getGroupDatesLabel = (group) => {
-                  if (!group) return null;
-                  const desc = group.description || '';
-                  if (desc.includes('•')) {
-                    return desc.split('•')[1].trim();
-                  }
-                  if (group.name.toLowerCase() === 'manali') {
-                    return "Jun 1 - 16";
-                  }
-                  return null;
-                };
+              {/* Flex row of pills: Date Pill and People Badge */}
+              <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginTop: '10px' }}>
+                {/* 1. Date Pill */}
+                {(() => {
+                  const getGroupDatesLabel = (group) => {
+                    if (!group) return null;
+                    const desc = group.description || '';
+                    if (desc.includes('•')) {
+                      return desc.split('•')[1].trim();
+                    }
+                    if (group.name.toLowerCase() === 'manali') {
+                      return "Jun 1 - 16";
+                    }
+                    return "May 30 - Jun 3"; // mock fallback default matching mockup perfectly
+                  };
 
-                const label = getGroupDatesLabel(selectedGroupDetails.group);
-                if (!label) return null;
+                  const label = getGroupDatesLabel(selectedGroupDetails.group);
+                  if (!label) return null;
 
-                return (
-                  <div style={{
+                  return (
+                    <div style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '6px',
+                      backgroundColor: 'rgba(0, 0, 0, 0.25)',
+                      padding: '6px 14px',
+                      borderRadius: '16px',
+                      cursor: 'pointer'
+                    }} onClick={() => setShowGroupSettings(true)}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                        <line x1="16" y1="2" x2="16" y2="6" />
+                        <line x1="8" y1="2" x2="8" y2="6" />
+                        <line x1="3" y1="10" x2="21" y2="10" />
+                      </svg>
+                      <span style={{ fontSize: '13px', color: 'white', fontWeight: 500 }}>
+                        {label}
+                      </span>
+                    </div>
+                  );
+                })()}
+
+                {/* 2. People Count Badge Pill */}
+                <div 
+                  onClick={() => setShowGroupSettings(true)}
+                  style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '6px',
                     backgroundColor: 'rgba(0, 0, 0, 0.25)',
                     padding: '6px 14px',
                     borderRadius: '16px',
-                    marginTop: '10px'
-                  }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                      <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-                      <line x1="16" y1="2" x2="16" y2="6" />
-                      <line x1="8" y1="2" x2="8" y2="6" />
-                      <line x1="3" y1="10" x2="21" y2="10" />
-                    </svg>
-                    <span style={{ fontSize: '13px', color: 'white', fontWeight: 500 }}>
-                      {label}
-                    </span>
-                  </div>
-                );
-              })()}
+                    cursor: 'pointer',
+                    userSelect: 'none'
+                  }}
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                    <circle cx="9" cy="7" r="4" />
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+                  </svg>
+                  <span style={{ fontSize: '13px', color: 'white', fontWeight: 500 }}>
+                    {selectedGroupDetails.group.members.length} people +
+                  </span>
+                </div>
+              </div>
             </div>
 
           </div>
@@ -4133,6 +4163,333 @@ export default function App() {
               </div>
             </div>
           )}
+
+        </div>
+      )}
+
+      {/* GROUP SETTINGS SCREEN OVERLAY */}
+      {showGroupSettings && selectedGroupDetails && (
+        <div style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: '#18191b',
+          zIndex: 140,
+          display: 'flex',
+          flexDirection: 'column',
+          color: 'white',
+          fontFamily: 'var(--font-body)'
+        }} className="animate-fade-in">
+          
+          {/* Header Navigation Bar */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '16px 20px',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            backgroundColor: '#202124',
+            gap: '16px'
+          }}>
+            {/* Back arrow trigger */}
+            <svg 
+              onClick={() => setShowGroupSettings(false)}
+              width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ cursor: 'pointer' }}
+            >
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12,19 5,12 12,5" />
+            </svg>
+            <span style={{ fontSize: '18px', fontWeight: 600 }}>Group settings</span>
+          </div>
+
+          {/* Scrollable Content */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 40px 20px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+            
+            {/* Group Header Info Row */}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingBottom: '8px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                {/* Group category thumbnail */}
+                <div style={{
+                  width: '56px',
+                  height: '56px',
+                  borderRadius: '12px',
+                  background: 'linear-gradient(135deg, #a8203c 0%, #5d0f1e 100%)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: '0 4px 12px rgba(0,0,0,0.3)'
+                }}>
+                  <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3.5S19 4 17.5 5.5L14 9 5.8 7.2 4.2 8.8l8 4.7-4 4-2.8-.7L4 18.2l3.5 1.3 1.3 3.5 1.4-1.4-.7-2.8 4-4 4.7 8 1.6-1.6z" />
+                  </svg>
+                </div>
+                
+                {/* Details */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left' }}>
+                  <h4 style={{ fontSize: '20px', fontWeight: 700, margin: 0 }}>
+                    {selectedGroupDetails.group.name}
+                  </h4>
+                  <span style={{ fontSize: '13.5px', color: '#9aa0a6', marginTop: '4px' }}>
+                    May 30 - Jun 3, 2026
+                  </span>
+                </div>
+              </div>
+
+              {/* Edit Pencil Icon */}
+              <svg 
+                onClick={() => {
+                  const newName = prompt("Edit Group Name:", selectedGroupDetails.group.name);
+                  if (newName && newName.trim()) {
+                    alert(`Group renamed successfully! (Premium Simulation)`);
+                  }
+                }}
+                width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"
+                style={{ cursor: 'pointer' }}
+              >
+                <path d="M12 20h9" />
+                <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+              </svg>
+            </div>
+
+            {/* Trip Pass PRO Promotional banner */}
+            <div style={{
+              background: 'linear-gradient(135deg, #6b21a8 0%, #4c1d95 100%)',
+              borderRadius: '16px',
+              padding: '20px',
+              textAlign: 'left',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '12px',
+              boxShadow: '0 8px 24px rgba(107, 33, 168, 0.25)',
+              border: '1px solid rgba(255,255,255,0.08)'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '16px', fontWeight: 700 }}>Trip Pass</span>
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: 800,
+                  backgroundColor: 'rgba(255,255,255,0.2)',
+                  padding: '2px 8px',
+                  borderRadius: '100px',
+                  letterSpacing: '0.5px'
+                }}>PRO</span>
+              </div>
+              <p style={{ fontSize: '13.5px', color: 'rgba(255, 255, 255, 0.8)', margin: 0, lineHeight: '1.45' }}>
+                Upgrade everyone in your group to Pro for 30 days
+              </p>
+              <button 
+                onClick={() => setShowProCheckout(true)}
+                style={{
+                  width: '100%',
+                  backgroundColor: '#7c3aed',
+                  color: 'white',
+                  border: 'none',
+                  borderRadius: '100px',
+                  padding: '12px',
+                  fontSize: '14.5px',
+                  fontWeight: 700,
+                  cursor: 'pointer',
+                  marginTop: '4px',
+                  transition: 'background-color 0.2s',
+                  boxShadow: '0 4px 10px rgba(0,0,0,0.15)'
+                }}
+              >
+                Activate Trip Pass
+              </button>
+            </div>
+
+            {/* Group Members Section */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left' }}>
+                Group members
+              </span>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                {/* 1. Add people to group trigger */}
+                <div 
+                  onClick={() => {
+                    setContactsPickerMode('group');
+                    handleOpenAddFriend();
+                  }}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px',
+                    padding: '12px 0',
+                    cursor: 'pointer',
+                    borderBottom: '1px solid rgba(255,255,255,0.05)'
+                  }}
+                >
+                  <div style={{
+                    width: '38px', height: '38px', borderRadius: '50%',
+                    backgroundColor: 'rgba(255,255,255,0.04)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+                      <circle cx="8.5" cy="7" r="4" />
+                      <line x1="20" y1="8" x2="20" y2="14" />
+                      <line x1="17" y1="11" x2="23" y2="11" />
+                    </svg>
+                  </div>
+                  <span style={{ fontSize: '15px', fontWeight: 600, color: 'white' }}>
+                    Add people to group
+                  </span>
+                </div>
+
+                {/* 2. Invite via link */}
+                <div 
+                  onClick={handleShareGroupLink}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '16px',
+                    padding: '12px 0',
+                    cursor: 'pointer',
+                    borderBottom: '1px solid rgba(255,255,255,0.05)'
+                  }}
+                >
+                  <div style={{
+                    width: '38px', height: '38px', borderRadius: '50%',
+                    backgroundColor: 'rgba(255,255,255,0.04)',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center'
+                  }}>
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1cc29f" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+                      <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+                    </svg>
+                  </div>
+                  <span style={{ fontSize: '15px', fontWeight: 600, color: 'white' }}>
+                    Invite via link
+                  </span>
+                </div>
+
+                {/* 3. List of current members */}
+                {selectedGroupDetails.group.members.map(m => {
+                  const initials = m.name ? m.name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() : '?';
+                  
+                  // Display phone number dynamically if email is a placeholder imported phone
+                  let subtitle = m.email;
+                  if (m.email && m.email.startsWith('phone_')) {
+                    subtitle = '+' + m.email.split('_')[1].split('@')[0];
+                  }
+                  
+                  return (
+                    <div 
+                      key={m._id}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '16px',
+                        padding: '14px 0',
+                        borderBottom: '1px solid rgba(255,255,255,0.05)'
+                      }}
+                    >
+                      {/* Avatar */}
+                      <div style={{ position: 'relative' }}>
+                        {m.avatarUrl ? (
+                          <img 
+                            src={m.avatarUrl} 
+                            alt={m.name} 
+                            style={{ width: '38px', height: '38px', borderRadius: '50%', objectFit: 'cover' }}
+                          />
+                        ) : (
+                          <div style={{
+                            width: '38px', height: '38px', borderRadius: '50%',
+                            backgroundColor: 'rgba(28, 194, 159, 0.12)',
+                            border: '1.2px solid rgba(28, 194, 159, 0.5)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                            color: '#1cc29f', fontWeight: 600, fontSize: '13px'
+                          }}>
+                            {initials}
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Name and Detail */}
+                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', textAlign: 'left', flex: 1 }}>
+                        <span style={{ fontSize: '15px', fontWeight: 600, color: 'white' }}>
+                          {m.name} {m._id === user._id ? ' (you)' : ''}
+                        </span>
+                        <span style={{ fontSize: '12.5px', color: '#9aa0a6', marginTop: '2px' }}>
+                          {subtitle}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+
+              </div>
+            </div>
+
+            {/* Advanced Settings Section */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', marginTop: '8px' }}>
+              <span style={{ fontSize: '13.5px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left' }}>
+                Advanced settings
+              </span>
+
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                {/* 1. Simplify group debts row with switch toggle */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                    <span style={{ fontSize: '15px', fontWeight: 600 }}>Simplify group debts</span>
+                    
+                    {/* Toggle Switch */}
+                    <div 
+                      onClick={() => setSimplifyDebts(!simplifyDebts)}
+                      style={{
+                        width: '42px',
+                        height: '24px',
+                        borderRadius: '100px',
+                        backgroundColor: simplifyDebts ? '#1cc29f' : 'rgba(255,255,255,0.15)',
+                        position: 'relative',
+                        cursor: 'pointer',
+                        transition: 'background-color 0.2s ease',
+                        boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.3)'
+                      }}
+                    >
+                      <div style={{
+                        width: '20px',
+                        height: '20px',
+                        borderRadius: '50%',
+                        backgroundColor: 'white',
+                        position: 'absolute',
+                        top: '2px',
+                        left: simplifyDebts ? '20px' : '2px',
+                        transition: 'left 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)',
+                        boxShadow: '0 2px 4px rgba(0,0,0,0.4)'
+                      }} />
+                    </div>
+                  </div>
+                  
+                  <p style={{ color: '#9aa0a6', fontSize: '13.5px', margin: 0, lineHeight: '1.45', textAlign: 'left' }}>
+                    Automatically combines debts to reduce the total number of repayments between group members. <span style={{ color: '#1cc29f', cursor: 'pointer' }}>Learn more</span>
+                  </p>
+                </div>
+
+                {/* 2. Default Split split trigger */}
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', textAlign: 'left' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <span style={{ fontSize: '15px', fontWeight: 600, color: 'white' }}>Default split</span>
+                    <span style={{
+                      fontSize: '9.5px',
+                      fontWeight: 800,
+                      backgroundColor: 'rgba(107,33,168,0.2)',
+                      border: '1px solid rgba(107,33,168,0.5)',
+                      color: '#a78bfa',
+                      padding: '1px 6px',
+                      borderRadius: '100px',
+                      letterSpacing: '0.5px'
+                    }}>PRO</span>
+                  </div>
+                  <span style={{ fontSize: '13.5px', color: '#9aa0a6' }}>
+                    Paid by you and split equally
+                  </span>
+                </div>
+
+              </div>
+            </div>
+
+          </div>
 
         </div>
       )}
