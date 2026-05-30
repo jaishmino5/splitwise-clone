@@ -535,7 +535,7 @@ export default function App() {
               const newFriend = await res.json();
               if (newFriend && newFriend._id) {
                 if (contactsPickerMode === 'group') {
-                  if (selectedGroupId) {
+                  if (selectedGroupId && !showAddGroup) {
                     // Add directly to existing group members
                     const currentMembers = selectedGroupDetails?.group?.members || [];
                     if (!currentMembers.some(m => m._id === newFriend._id)) {
@@ -575,7 +575,7 @@ export default function App() {
           }
           await fetchUsers();
           if (contactsPickerMode === 'group') {
-            if (selectedGroupId) {
+            if (selectedGroupId && !showAddGroup) {
               await fetchGroupDetails(selectedGroupId);
             } else {
               setGroupMembers(newCheckedIds);
@@ -630,7 +630,7 @@ export default function App() {
               const newFriend = await res.json();
               if (newFriend && newFriend._id) {
                 if (contactsPickerMode === 'group') {
-                  if (selectedGroupId) {
+                  if (selectedGroupId && !showAddGroup) {
                     // Add directly to existing group members
                     const currentMembers = selectedGroupDetails?.group?.members || [];
                     if (!currentMembers.some(m => m._id === newFriend._id)) {
@@ -670,7 +670,7 @@ export default function App() {
           }
           await fetchUsers();
           if (contactsPickerMode === 'group') {
-            if (selectedGroupId) {
+            if (selectedGroupId && !showAddGroup) {
               await fetchGroupDetails(selectedGroupId);
             } else {
               setGroupMembers(newCheckedIds);
@@ -713,7 +713,7 @@ export default function App() {
         await fetchUsers();
         if (contactsPickerMode === 'group') {
           if (newFriend && newFriend._id) {
-            if (selectedGroupId) {
+            if (selectedGroupId && !showAddGroup) {
               // Existing group
               const currentMembers = selectedGroupDetails?.group?.members || [];
               if (!currentMembers.some(m => m._id === newFriend._id)) {
