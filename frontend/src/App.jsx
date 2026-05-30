@@ -112,6 +112,7 @@ export default function App() {
   const [showWhiteboardTab, setShowWhiteboardTab] = useState(false);
   const [whiteboardText, setWhiteboardText] = useState('');
   const [expandedBalances, setExpandedBalances] = useState({});
+  const [expenseFromHome, setExpenseFromHome] = useState(false);
 
   // Friends & Search State
   const [friends, setFriends] = useState([]);
@@ -438,6 +439,7 @@ export default function App() {
         })
       });
       if (res.ok) {
+        const newGroup = await res.json();
         setShowAddGroup(false);
         setGroupName('');
         setGroupDesc('');
@@ -449,6 +451,8 @@ export default function App() {
         setShowSettleUpReminders(false);
         setShowBalanceAlert(false);
         await fetchDashboardData();
+        setSelectedGroupId(newGroup._id);
+        setPage('group-details');
       } else {
         alert("Failed to create group");
       }
@@ -767,6 +771,7 @@ export default function App() {
       } else {
         setExpenseSplits([user._id]);
       }
+      setExpenseFromHome(true);
       setShowAddExpense(true);
     } else {
       // Create a default group first
@@ -834,6 +839,8 @@ export default function App() {
         if (typeof fetchActivities === 'function') {
           await fetchActivities();
         }
+        // Navigate to show changes
+        setPage('group-details');
       } else {
         alert("Failed to add expense");
       }
@@ -3907,6 +3914,7 @@ export default function App() {
               onClick={() => {
                 setExpensePayer(user._id);
                 setExpenseSplits(selectedGroupDetails.group.members.map(m => m._id));
+                setExpenseFromHome(false);
                 setShowAddExpense(true);
               }}
               style={{
@@ -3999,7 +4007,39 @@ export default function App() {
               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px', fontSize: '15px' }}>
                 <span style={{ color: 'rgba(255, 255, 255, 0.6)', marginRight: '2px' }}>With <strong>you</strong> and:</span>
                 
-                {selectedGroupId && selectedGroupDetails?.group ? (
+                {expenseFromHome ? (
+                  /* If we added expense from home page, show a group selector dropdown */
+                  <select
+                    value={selectedGroupId || ''}
+                    onChange={async (e) => {
+                      const newGroupId = e.target.value;
+                      setSelectedGroupId(newGroupId);
+                      await fetchGroupDetails(newGroupId);
+                      const grp = groups.find(g => g._id === newGroupId);
+                      if (grp && grp.members) {
+                        setExpenseSplits(grp.members.map(m => m._id || m));
+                      }
+                    }}
+                    style={{
+                      backgroundColor: 'rgba(255, 255, 255, 0.08)',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      padding: '6px 12px',
+                      borderRadius: '100px',
+                      fontSize: '14px',
+                      color: 'white',
+                      outline: 'none',
+                      cursor: 'pointer',
+                      fontFamily: 'var(--font-body)',
+                      fontWeight: 500
+                    }}
+                  >
+                    {groups.map(g => (
+                      <option key={g._id} value={g._id} style={{ backgroundColor: '#202124', color: 'white' }}>
+                        All of {g.name}
+                      </option>
+                    ))}
+                  </select>
+                ) : selectedGroupId && selectedGroupDetails?.group ? (
                   /* Single premium group pill badge representing "All of [GroupName]" */
                   <div style={{
                     display: 'inline-flex',
