@@ -512,12 +512,13 @@ app.post('/api/groups', async (req, res) => {
 app.put('/api/groups/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, members } = req.body;
+    const { name, description, members, whiteboard } = req.body;
     
     const updateData = {};
     if (name !== undefined) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (members !== undefined) updateData.members = members;
+    if (whiteboard !== undefined) updateData.whiteboard = whiteboard;
     
     const updated = await db.updateGroup(id, updateData);
     if (!updated) {

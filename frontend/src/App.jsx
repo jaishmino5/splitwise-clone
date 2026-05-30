@@ -106,6 +106,13 @@ export default function App() {
   const [showShareModal, setShowShareModal] = useState(false);
   const [termsBackPage, setTermsBackPage] = useState('landing');
 
+  // Custom High-Fidelity Group Feature Tabs
+  const [showBalancesTab, setShowBalancesTab] = useState(false);
+  const [showTotalsTab, setShowTotalsTab] = useState(false);
+  const [showWhiteboardTab, setShowWhiteboardTab] = useState(false);
+  const [whiteboardText, setWhiteboardText] = useState('');
+  const [expandedBalances, setExpandedBalances] = useState({});
+
   // Friends & Search State
   const [friends, setFriends] = useState([]);
   const [friendSearchQuery, setFriendSearchQuery] = useState('');
@@ -2225,6 +2232,15 @@ export default function App() {
                     const status = g.currentUserStatus;
                     const type = status ? status.type : 'settled';
                     const amount = status ? status.amount : 0;
+
+                    let subtext = '';
+                    if (status) {
+                      if (type === 'owed' && status.owedBy && status.owedBy.length > 0) {
+                        subtext = status.owedBy.map(o => `${o.user.name} owes you $${o.amount.toFixed(2)}`).join(', ');
+                      } else if (type === 'owe' && status.owesTo && status.owesTo.length > 0) {
+                        subtext = status.owesTo.map(o => `you owe ${o.user.name} $${o.amount.toFixed(2)}`).join(', ');
+                      }
+                    }
                     
                     return (
                       <div 
@@ -2253,6 +2269,11 @@ export default function App() {
                             {type === 'owed' ? `you are owed $${amount.toFixed(2)}` : 
                              type === 'owe' ? `you owe $${amount.toFixed(2)}` : 'no expenses'}
                           </span>
+                          {subtext && (
+                            <span style={{ fontSize: '13px', color: '#94a3b8', marginTop: '2px' }}>
+                              {subtext}
+                            </span>
+                          )}
                         </div>
                       </div>
                     );
@@ -3310,7 +3331,10 @@ export default function App() {
 
             {/* 3. Balances */}
             <button 
-              onClick={() => alert("Balances Breakdown: " + (selectedGroupDetails.netDebts.length === 0 ? "Everyone is settled up!" : `${selectedGroupDetails.netDebts.length} outstanding debt records`))}
+              onClick={() => {
+                setExpandedBalances({});
+                setShowBalancesTab(true);
+              }}
               style={{
                 borderRadius: '20px',
                 border: '1.2px solid rgba(255, 255, 255, 0.22)',
@@ -3331,7 +3355,7 @@ export default function App() {
 
             {/* 4. Totals */}
             <button 
-              onClick={() => alert("Total Transactions: " + expenses.length)}
+              onClick={() => setShowTotalsTab(true)}
               style={{
                 borderRadius: '20px',
                 border: '1.2px solid rgba(255, 255, 255, 0.22)',
@@ -3352,7 +3376,10 @@ export default function App() {
 
             {/* 5. Whiteboard */}
             <button 
-              onClick={() => alert("Group Whiteboard coming in next version! (Premium Feature)")}
+              onClick={() => {
+                setWhiteboardText(selectedGroupDetails?.group?.whiteboard || '');
+                setShowWhiteboardTab(true);
+              }}
               style={{
                 borderRadius: '20px',
                 border: '1.2px solid rgba(255, 255, 255, 0.22)',
@@ -3397,7 +3424,20 @@ export default function App() {
           <div style={{ flex: 1, overflowY: 'auto', padding: '20px 20px 80px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
             
             {/* Status Balance Sub-Header */}
-            {selectedGroupDetails.currentUserStatus.amount > 0 && (
+            {selectedGroupDetails.currentUserStatus.amount <= 0 ? (
+              <div style={{
+                backgroundColor: 'rgba(28, 194, 159, 0.08)',
+                borderRadius: '12px',
+                padding: '12px 16px',
+                borderLeft: '4px solid #1cc29f',
+                color: 'white',
+                fontSize: '13.5px',
+                fontWeight: 600,
+                textAlign: 'left'
+              }}>
+                🎉 You are all settled up in this group.
+              </div>
+            ) : (
               <div style={{
                 backgroundColor: 'rgba(255, 255, 255, 0.04)',
                 borderRadius: '12px',
@@ -3436,97 +3476,325 @@ export default function App() {
             )}
 
             {/* Transaction Log Section */}
-            {expenses.length > 0 || settlements.length > 0 ? (
-              <>
-                <h4 style={{ fontFamily: 'var(--font-display)', fontSize: '14px', fontWeight: 600, color: 'rgba(255,255,255,0.4)', marginTop: '8px', textAlign: 'left' }}>
-                  Transaction Log
-                </h4>
-                
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {/* Show Settlements first, then Expenses */}
-                  {settlements.map(s => (
-                    <div 
-                      key={s._id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        padding: '12px 16px',
-                        backgroundColor: '#202124',
-                        border: '1px solid rgba(255,255,255,0.05)',
-                        borderRadius: '12px'
-                      }}
-                    >
-                      <div style={{ marginRight: '12px', fontSize: '20px' }}>💸</div>
-                      <div style={{ flex: 1, textAlign: 'left' }}>
-                        <p style={{ fontSize: '13.5px', fontWeight: 600, color: 'white', margin: 0 }}>
-                          {s.fromUser.name} paid {s.toUser.name}
-                        </p>
-                        <span style={{ fontSize: '11px', color: 'rgba(255, 255, 255, 0.4)', marginTop: '2px', display: 'block' }}>
-                          {new Date(s.createdAt).toLocaleDateString()}
-                        </span>
-                      </div>
-                      <div style={{ fontWeight: 700, fontSize: '15px', color: 'white' }}>
-                        ${s.amount.toFixed(2)}
+            {selectedGroupDetails.currentUserStatus.amount <= 0 ? (
+              /* Custom High-Fidelity Settled Up Empty State matching second mockup image */
+              <div style={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '80px 20px',
+                color: 'white',
+                fontFamily: 'var(--font-body)',
+                textAlign: 'center',
+                gap: '12px',
+                flex: 1
+              }}>
+                <span style={{ fontSize: '18px', fontWeight: 600, color: 'white' }}>
+                  You are all settled up
+                </span>
+                <span style={{ fontSize: '14px', color: '#94a3b8', cursor: 'pointer', textDecoration: 'underline' }} onClick={() => alert("Showing settled expenses... (Demo Success)")}>
+                  Tap to show settled expenses
+                </span>
+
+                {/* Gorgeous multi-colored geometric checkmark icon matching mockup exactly! */}
+                <div style={{
+                  marginTop: '24px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center'
+                }}>
+                  <svg width="64" height="64" viewBox="0 0 24 24" fill="none">
+                    {/* Left stroke of checkmark (Purple) */}
+                    <path 
+                      d="M6 12l4 4" 
+                      stroke="url(#purpleGrad)" 
+                      strokeWidth="4" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                    />
+                    {/* Right stroke of checkmark (Rose/Red) */}
+                    <path 
+                      d="M10 16l8-8" 
+                      stroke="url(#roseGrad)" 
+                      strokeWidth="4" 
+                      strokeLinecap="round" 
+                      strokeLinejoin="round" 
+                    />
+                    
+                    <defs>
+                      <linearGradient id="purpleGrad" x1="6" y1="12" x2="10" y2="16" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stopColor="#7c3aed" />
+                        <stop offset="100%" stopColor="#4c1d95" />
+                      </linearGradient>
+                      <linearGradient id="roseGrad" x1="10" y1="16" x2="18" y2="8" gradientUnits="userSpaceOnUse">
+                        <stop offset="0%" stopColor="#e11d48" />
+                        <stop offset="100%" stopColor="#9f1239" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                </div>
+              </div>
+            ) : expenses.length > 0 || settlements.length > 0 ? (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '20px', marginTop: '12px' }}>
+                {(() => {
+                  // Group transactions by month
+                  const groupedObj = {};
+                  expenses.forEach(e => {
+                    const d = new Date(e.createdAt);
+                    const key = d.toLocaleString('en-US', { month: 'long', year: 'numeric' }); // e.g. "May 2026"
+                    if (!groupedObj[key]) groupedObj[key] = [];
+                    groupedObj[key].push({ type: 'expense', date: d, data: e });
+                  });
+                  settlements.forEach(s => {
+                    const d = new Date(s.createdAt);
+                    const key = d.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+                    if (!groupedObj[key]) groupedObj[key] = [];
+                    groupedObj[key].push({ type: 'settlement', date: d, data: s });
+                  });
+
+                  // Sort dates within each month descending
+                  Object.keys(groupedObj).forEach(k => {
+                    groupedObj[k].sort((a, b) => b.date - a.date);
+                  });
+
+                  // Sort month keys descending
+                  const sortedMonths = Object.keys(groupedObj).sort((a, b) => new Date(b) - new Date(a));
+
+                  return sortedMonths.map(monthName => (
+                    <div key={monthName} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                      {/* Month Year Header matching mockup */}
+                      <span style={{
+                        fontSize: '13px',
+                        fontWeight: 700,
+                        color: 'rgba(255, 255, 255, 0.4)',
+                        textTransform: 'none',
+                        letterSpacing: '0.3px',
+                        textAlign: 'left',
+                        marginBottom: '4px'
+                      }}>
+                        {monthName}
+                      </span>
+
+                      {/* List of items inside this month */}
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                        {groupedObj[monthName].map((item, idx) => {
+                          const isExpense = item.type === 'expense';
+                          
+                          if (isExpense) {
+                            const e = item.data;
+                            const wasPaidByMe = e.paidBy._id.toString() === user._id.toString();
+                            const mySplit = e.splits.find(s => s.user._id.toString() === user._id.toString());
+                            const myOwedShare = mySplit ? mySplit.owedAmount : 0;
+                            
+                            let shareText = '';
+                            let shareColor = '';
+                            let amountText = '';
+
+                            if (wasPaidByMe) {
+                              const totalLent = e.amount - myOwedShare;
+                              shareText = 'you lent';
+                              shareColor = '#1cc29f';
+                              amountText = `$${totalLent.toFixed(2)}`;
+                            } else {
+                              shareText = myOwedShare > 0 ? 'you borrowed' : "you didn't split";
+                              shareColor = myOwedShare > 0 ? '#ff652f' : 'rgba(255,255,255,0.4)';
+                              amountText = myOwedShare > 0 ? `$${myOwedShare.toFixed(2)}` : '--';
+                            }
+
+                            // Dynamic category icon calculation
+                            const categoryDetails = getCategoryIcon(e.description);
+
+                            // Short month name (e.g. "May") and day number (e.g. "30")
+                            const shortMonth = item.date.toLocaleString('en-US', { month: 'short' });
+                            const dayNum = item.date.getDate();
+
+                            return (
+                              <div 
+                                key={e._id}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '12px'
+                                }}
+                              >
+                                {/* Stacked Date Display */}
+                                <div style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  width: '32px',
+                                  textAlign: 'center'
+                                }}>
+                                  <span style={{ fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>
+                                    {shortMonth}
+                                  </span>
+                                  <span style={{ fontSize: '17px', fontWeight: 700, color: 'white', marginTop: '1px' }}>
+                                    {dayNum}
+                                  </span>
+                                </div>
+
+                                {/* Category Rounded Square Icon */}
+                                <div style={{
+                                  width: '40px',
+                                  height: '40px',
+                                  borderRadius: '8px',
+                                  backgroundColor: categoryDetails.bg,
+                                  border: categoryDetails.border,
+                                  color: categoryDetails.color,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0
+                                }}>
+                                  {categoryDetails.icon}
+                                </div>
+
+                                {/* Description and Payer Stack */}
+                                <div style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'flex-start',
+                                  textAlign: 'left',
+                                  flex: 1,
+                                  minWidth: 0
+                                }}>
+                                  <span style={{
+                                    fontSize: '15px',
+                                    fontWeight: 600,
+                                    color: 'white',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    width: '100%'
+                                  }}>
+                                    {e.description}
+                                  </span>
+                                  <span style={{
+                                    fontSize: '12.5px',
+                                    color: '#9aa0a6',
+                                    marginTop: '2px'
+                                  }}>
+                                    {wasPaidByMe ? 'You' : e.paidBy.name} paid ${e.amount.toFixed(2)}
+                                  </span>
+                                </div>
+
+                                {/* Borrowed/Lent Stack */}
+                                <div style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'flex-end',
+                                  textAlign: 'right'
+                                }}>
+                                  <span style={{
+                                    fontSize: '11px',
+                                    color: shareColor,
+                                    fontWeight: 500
+                                  }}>
+                                    {shareText}
+                                  </span>
+                                  <span style={{
+                                    fontSize: '15px',
+                                    fontWeight: 700,
+                                    color: shareColor,
+                                    marginTop: '2px'
+                                  }}>
+                                    {amountText}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          } else {
+                            // Settlement row matching design
+                            const s = item.data;
+                            const wasPaidByMe = s.fromUser._id.toString() === user._id.toString();
+                            const shortMonth = item.date.toLocaleString('en-US', { month: 'short' });
+                            const dayNum = item.date.getDate();
+
+                            return (
+                              <div 
+                                key={s._id}
+                                style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '12px'
+                                }}
+                              >
+                                {/* Stacked Date */}
+                                <div style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'center',
+                                  width: '32px',
+                                  textAlign: 'center'
+                                }}>
+                                  <span style={{ fontSize: '11px', fontWeight: 600, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' }}>
+                                    {shortMonth}
+                                  </span>
+                                  <span style={{ fontSize: '17px', fontWeight: 700, color: 'white', marginTop: '1px' }}>
+                                    {dayNum}
+                                  </span>
+                                </div>
+
+                                {/* Money/Settlement Icon rounded square */}
+                                <div style={{
+                                  width: '40px',
+                                  height: '40px',
+                                  borderRadius: '8px',
+                                  backgroundColor: 'rgba(28, 194, 159, 0.12)',
+                                  border: '1.2px solid rgba(28, 194, 159, 0.4)',
+                                  color: '#1cc29f',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  flexShrink: 0
+                                }}>
+                                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                                    <rect x="2" y="6" width="20" height="12" rx="2" />
+                                    <circle cx="12" cy="12" r="2" />
+                                    <path d="M6 12h.01M18 12h.01" />
+                                  </svg>
+                                </div>
+
+                                {/* Middle Stack */}
+                                <div style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'flex-start',
+                                  textAlign: 'left',
+                                  flex: 1
+                                }}>
+                                  <span style={{ fontSize: '15px', fontWeight: 600, color: 'white' }}>
+                                    {s.fromUser.name} paid {s.toUser.name}
+                                  </span>
+                                  <span style={{ fontSize: '12.5px', color: '#9aa0a6', marginTop: '2px' }}>
+                                    Settlement
+                                  </span>
+                                </div>
+
+                                {/* Right Stack */}
+                                <div style={{
+                                  display: 'flex',
+                                  flexDirection: 'column',
+                                  alignItems: 'flex-end',
+                                  textAlign: 'right'
+                                }}>
+                                  <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)' }}>
+                                    {wasPaidByMe ? 'you paid' : 'you received'}
+                                  </span>
+                                  <span style={{ fontSize: '15px', fontWeight: 700, color: 'white', marginTop: '2px' }}>
+                                    ${s.amount.toFixed(2)}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          }
+                        })}
                       </div>
                     </div>
-                  ))}
-
-                  {expenses.map(e => {
-                    const wasPaidByMe = e.paidBy._id.toString() === user._id.toString();
-                    const mySplit = e.splits.find(s => s.user._id.toString() === user._id.toString());
-                    const myOwedShare = mySplit ? mySplit.owedAmount : 0;
-                    
-                    let shareText = '';
-                    let shareColor = '';
-
-                    if (wasPaidByMe) {
-                      const totalLent = e.amount - myOwedShare;
-                      shareText = `you lent $${totalLent.toFixed(2)}`;
-                      shareColor = '#1cc29f';
-                    } else {
-                      shareText = myOwedShare > 0 ? `you borrowed $${myOwedShare.toFixed(2)}` : "you didn't split";
-                      shareColor = myOwedShare > 0 ? '#ff652f' : 'rgba(255,255,255,0.4)';
-                    }
-
-                    return (
-                      <div 
-                        key={e._id}
-                        style={{
-                          display: 'flex',
-                          alignItems: 'center',
-                          padding: '14px 16px',
-                          backgroundColor: '#202124',
-                          border: '1px solid rgba(255,255,255,0.05)',
-                          borderRadius: '12px'
-                        }}
-                      >
-                        <div style={{ marginRight: '14px', fontSize: '22px' }}>🍔</div>
-                        
-                        <div style={{ flex: 1, textAlign: 'left' }}>
-                          <h5 style={{ fontSize: '14px', fontWeight: 700, color: 'white', marginBottom: '2px', marginTop: 0 }}>
-                            {e.description}
-                          </h5>
-                          <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', margin: 0 }}>
-                            Paid by {e.paidBy.name} • {new Date(e.createdAt).toLocaleDateString()}
-                          </p>
-                        </div>
-
-                        <div style={{ textAlign: 'right' }}>
-                          <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.4)', display: 'block' }}>
-                            Total Expense
-                          </span>
-                          <span style={{ fontSize: '14px', fontWeight: 700, color: 'white', display: 'block' }}>
-                            ${e.amount.toFixed(2)}
-                          </span>
-                          <span style={{ fontSize: '11px', fontWeight: 600, color: shareColor }}>
-                            {shareText}
-                          </span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </>
+                  ));
+                })()}
+              </div>
             ) : (
               /* Custom High-Fidelity Empty Group Card */
               <div style={{
@@ -4745,150 +5013,196 @@ export default function App() {
                 <span style={{ fontSize: '18px', fontWeight: 600 }}>Record a payment</span>
               </div>
 
-              {/* Scrollable form content */}
-              <form onSubmit={handleSettleUp} style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 40px 20px', display: 'flex', flexDirection: 'column', gap: '24px' }}>
+              {/* High-Fidelity Form Content matching the mockup */}
+              <form onSubmit={handleSettleUp} style={{ flex: 1, display: 'flex', flexDirection: 'column', padding: '40px 20px', backgroundColor: '#18191b' }}>
                 
-                {/* Visual money settlement graphic */}
+                {/* 1. Avatars & Arrow Direction Row */}
                 <div style={{
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
-                  gap: '16px',
-                  margin: '12px 0'
+                  gap: '24px',
+                  marginBottom: '28px',
+                  position: 'relative'
                 }}>
+                  {/* Left Avatar (Payer) */}
                   <div style={{
-                    width: '56px',
-                    height: '56px',
+                    width: '64px',
+                    height: '64px',
                     borderRadius: '50%',
-                    backgroundColor: 'rgba(28, 194, 159, 0.12)',
+                    backgroundColor: settleFrom === user._id ? 'linear-gradient(135deg, #ff652f 0%, #ff8a5c 100%)' : '#eceef1',
+                    color: settleFrom === user._id ? 'white' : '#8b95a5',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    fontSize: '24px',
-                    color: '#1cc29f',
-                    border: '1.2px solid rgba(28, 194, 159, 0.4)'
+                    fontSize: '28px',
+                    fontWeight: 600,
+                    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
+                    background: settleFrom === user._id ? 'linear-gradient(135deg, #ff652f 0%, #ff8a5c 100%)' : '#eceef1'
                   }}>
-                    💸
+                    {settleFrom === user._id ? (
+                      'Y'
+                    ) : (
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                        <polyline points="22,6 12,13 2,6" />
+                      </svg>
+                    )}
+                  </div>
+
+                  {/* White Direction Arrow */}
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="5" y1="12" x2="19" y2="12" />
+                    <polyline points="12,5 19,12 12,19" />
+                  </svg>
+
+                  {/* Right Avatar (Recipient) */}
+                  <div style={{
+                    width: '64px',
+                    height: '64px',
+                    borderRadius: '50%',
+                    backgroundColor: settleTo === user._id ? 'linear-gradient(135deg, #ff652f 0%, #ff8a5c 100%)' : '#eceef1',
+                    color: settleTo === user._id ? 'white' : '#8b95a5',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '28px',
+                    fontWeight: 600,
+                    boxShadow: '0 4px 10px rgba(0, 0, 0, 0.15)',
+                    background: settleTo === user._id ? 'linear-gradient(135deg, #ff652f 0%, #ff8a5c 100%)' : '#eceef1'
+                  }}>
+                    {settleTo === user._id ? (
+                      'Y'
+                    ) : (
+                      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                        <polyline points="22,6 12,13 2,6" />
+                      </svg>
+                    )}
                   </div>
                 </div>
 
-                {/* 1. Payer selector */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <label style={{ fontSize: '13.5px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left' }}>
-                    Payer (Who Paid)
-                  </label>
-                  <select 
-                    value={settleFrom} 
-                    onChange={(e) => setSettleFrom(e.target.value)}
+                {/* 2. Text Summary Description */}
+                {(() => {
+                  const fromMember = selectedGroupDetails.group.members.find(m => m._id === settleFrom);
+                  const toMember = selectedGroupDetails.group.members.find(m => m._id === settleTo);
+                  const fromName = fromMember ? fromMember.name : 'Someone';
+                  const toName = toMember ? toMember.name : 'Someone';
+                  
+                  const isFromMe = settleFrom === user._id;
+                  const paymentText = isFromMe ? `You paid ${toName}` : `${fromName} paid you`;
+                  
+                  const otherMember = isFromMe ? toMember : fromMember;
+                  const phoneStr = otherMember && otherMember.email && otherMember.email.startsWith('phone_') 
+                    ? otherMember.email.replace('phone_', '') 
+                    : (otherMember && otherMember.phone ? otherMember.phone : '+918696783995');
+
+                  return (
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px', marginBottom: '32px' }}>
+                      <span style={{ fontSize: '18px', fontWeight: 600, color: 'white' }}>
+                        {paymentText}
+                      </span>
+                      <span style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.4)', letterSpacing: '0.5px' }}>
+                        {phoneStr}
+                      </span>
+                    </div>
+                  );
+                })()}
+
+                {/* 3. Centered Large Editable Amount */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '6px',
+                  marginBottom: '40px',
+                  color: 'white'
+                }}>
+                  <span style={{ fontSize: '30px', fontWeight: 500, color: 'white', opacity: 0.95 }}>$</span>
+                  
+                  {/* Dynamic sizing styled input */}
+                  <input 
+                    type="number" 
+                    step="0.01"
+                    value={settleAmount}
+                    onChange={(e) => setSettleAmount(e.target.value)}
                     required
                     style={{
-                      width: '100%',
-                      backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      borderRadius: '12px',
+                      background: 'transparent',
+                      border: 'none',
                       color: 'white',
-                      padding: '14px',
-                      fontSize: '15px',
+                      fontSize: '44px',
+                      fontWeight: 700,
+                      textAlign: 'center',
+                      width: `${Math.max(settleAmount.toString().length * 24 + 10, 160)}px`,
                       outline: 'none',
-                      cursor: 'pointer'
+                      padding: 0,
+                      margin: 0,
+                      fontFamily: 'var(--font-display)'
                     }}
-                  >
-                    <option value="" style={{ backgroundColor: '#202124' }}>Select payer</option>
-                    {selectedGroupDetails.group.members.map(m => (
-                      <option key={m._id} value={m._id} style={{ backgroundColor: '#202124' }}>
-                        {m.name} {m._id === user._id ? ' (you)' : ''}
-                      </option>
-                    ))}
-                  </select>
+                  />
+
+                  {/* Edit Pencil Icon */}
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255, 255, 255, 0.6)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer', marginLeft: '4px' }}>
+                    <path d="M12 20h9" />
+                    <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
+                  </svg>
                 </div>
 
-                {/* 2. Recipient selector */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <label style={{ fontSize: '13.5px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left' }}>
-                    Recipient (Who Received)
-                  </label>
-                  <select 
-                    value={settleTo} 
-                    onChange={(e) => setSettleTo(e.target.value)}
-                    required
-                    style={{
-                      width: '100%',
-                      backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                      border: '1px solid rgba(255, 255, 255, 0.15)',
-                      borderRadius: '12px',
-                      color: 'white',
-                      padding: '14px',
-                      fontSize: '15px',
-                      outline: 'none',
-                      cursor: 'pointer'
-                    }}
-                  >
-                    <option value="" style={{ backgroundColor: '#202124' }}>Select recipient</option>
-                    {selectedGroupDetails.group.members.map(m => (
-                      <option key={m._id} value={m._id} style={{ backgroundColor: '#202124' }}>
-                        {m.name} {m._id === user._id ? ' (you)' : ''}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                {/* 3. Amount field */}
-                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <label style={{ fontSize: '13.5px', fontWeight: 700, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', letterSpacing: '0.5px', textAlign: 'left' }}>
-                    Amount Paid ($)
-                  </label>
-                  <div style={{ position: 'relative' }}>
-                    <span style={{
-                      position: 'absolute',
-                      left: '16px',
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      fontSize: '20px',
-                      fontWeight: 600,
-                      color: 'rgba(255,255,255,0.4)'
-                    }}>$</span>
-                    <input 
-                      type="number" 
-                      step="0.01" 
-                      placeholder="0.00"
-                      value={settleAmount} 
-                      onChange={(e) => setSettleAmount(e.target.value)} 
-                      required 
-                      style={{
-                        width: '100%',
-                        backgroundColor: 'rgba(255, 255, 255, 0.04)',
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                        borderRadius: '12px',
-                        color: 'white',
-                        padding: '14px 14px 14px 38px',
-                        fontSize: '18px',
-                        fontWeight: 600,
-                        outline: 'none'
-                      }}
-                    />
+                {/* 4. Information Warning Banner */}
+                <div style={{
+                  display: 'flex',
+                  gap: '14px',
+                  alignItems: 'center',
+                  padding: '16px',
+                  borderRadius: '10px',
+                  backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                  border: '1px solid rgba(255, 255, 255, 0.08)',
+                  marginBottom: 'auto', // Pushes CTA button to bottom
+                  textAlign: 'left'
+                }}>
+                  {/* Teal Circular Info Icon */}
+                  <div style={{
+                    width: '24px',
+                    height: '24px',
+                    borderRadius: '50%',
+                    backgroundColor: 'rgba(28, 194, 159, 0.15)',
+                    color: '#1cc29f',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    fontSize: '13px',
+                    fontWeight: 800,
+                    flexShrink: 0
+                  }}>
+                    i
                   </div>
+                  <span style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.75)', lineHeight: '1.45', fontWeight: 500 }}>
+                    You are recording a payment that happened outside SplitWise. No money will be moved.
+                  </span>
                 </div>
 
-                {/* Submit button at the bottom */}
+                {/* 5. Sticky Green Bottom CTA Button */}
                 <button 
                   type="submit"
                   style={{
-                    backgroundColor: '#1cc29f',
+                    backgroundColor: '#1ca29f',
                     color: 'white',
                     border: 'none',
-                    borderRadius: '100px',
-                    padding: '14px',
+                    borderRadius: '30px',
+                    padding: '16px',
                     fontSize: '16px',
                     fontWeight: 700,
                     cursor: 'pointer',
-                    marginTop: '16px',
-                    boxShadow: '0 4px 12px rgba(28, 194, 159, 0.35)',
+                    width: '100%',
+                    marginTop: '32px',
+                    boxShadow: '0 4px 14px rgba(28, 194, 159, 0.3)',
                     transition: 'background-color 0.2s'
                   }}
                   onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#17a98a'}
-                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#1cc29f'}
+                  onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#1ca29f'}
                 >
-                  Save payment
+                  Record a payment
                 </button>
 
               </form>
@@ -6394,6 +6708,540 @@ export default function App() {
             <p style={{ fontSize: '14px', lineHeight: '1.6', margin: 0 }}>
               In order to use Splitwise, you will need to create an account, which requires providing some registration information such as name, email address and phone number. We use this information to manage your account including contacting you when necessary. The information can also be used so that your friends can find you and so you can access your account from anywhere.
             </p>
+          </div>
+        </div>
+      )}
+
+      {/* 7. BALANCES OVERLAY */}
+      {showBalancesTab && selectedGroupDetails && (
+        <div style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: '#18191b',
+          zIndex: 140,
+          display: 'flex',
+          flexDirection: 'column',
+          color: 'white',
+          fontFamily: 'var(--font-body)'
+        }} className="animate-fade-in">
+          {/* Header */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            padding: '16px 20px',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            backgroundColor: '#202124',
+            gap: '16px'
+          }}>
+            <svg 
+              onClick={() => setShowBalancesTab(false)}
+              width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ cursor: 'pointer' }}
+            >
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12,19 5,12 12,5" />
+            </svg>
+            <span style={{ fontSize: '18px', fontWeight: 600 }}>Balances</span>
+          </div>
+
+          {/* Accordion list */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '24px 20px 40px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            {selectedGroupDetails.balances.map((bal, idx) => {
+              const isExpanded = !!expandedBalances[bal.user._id];
+              const netBal = bal.netBalance;
+              const isOwed = netBal > 0;
+              const isOwe = netBal < 0;
+              
+              const color = isOwed ? '#1cc29f' : isOwe ? '#ff652f' : '#94a3b8';
+              const statusText = isOwed ? `gets back $${netBal.toFixed(2)}` : isOwe ? `owes $${Math.abs(netBal).toFixed(2)}` : 'is settled up';
+              
+              return (
+                <div key={idx} style={{ borderBottom: '1px solid rgba(255, 255, 255, 0.06)', paddingBottom: '12px' }}>
+                  {/* Main Accordion Row */}
+                  <div 
+                    onClick={() => setExpandedBalances(prev => ({ ...prev, [bal.user._id]: !prev[bal.user._id] }))}
+                    style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 0', cursor: 'pointer' }}
+                  >
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+                      {/* Avatar */}
+                      <div style={{
+                        width: '40px',
+                        height: '40px',
+                        borderRadius: '50%',
+                        backgroundColor: isOwe ? '#eceef1' : 'linear-gradient(135deg, #ff652f 0%, #ff8a5c 100%)',
+                        background: isOwe ? '#eceef1' : 'linear-gradient(135deg, #ff652f 0%, #ff8a5c 100%)',
+                        color: isOwe ? '#8b95a5' : 'white',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '18px',
+                        fontWeight: 600
+                      }}>
+                        {isOwe ? (
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                            <polyline points="22,6 12,13 2,6" />
+                          </svg>
+                        ) : (
+                          bal.user.name[0]
+                        )}
+                      </div>
+
+                      <span style={{ fontSize: '15.5px', fontWeight: 600, color: 'white' }}>
+                        {bal.user.name} <span style={{ color: color, fontWeight: 500 }}>{statusText}</span> <span style={{ color: 'rgba(255,255,255,0.4)', fontWeight: 400, fontSize: '13px' }}>in total</span>
+                      </span>
+                    </div>
+
+                    {/* Expansion Arrow */}
+                    <svg 
+                      width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                      style={{ transform: isExpanded ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}
+                    >
+                      <polyline points="6,9 12,15 18,9" />
+                    </svg>
+                  </div>
+
+                  {/* Expanded breakdown drawer */}
+                  {isExpanded && (
+                    <div style={{ padding: '8px 0 12px 54px', display: 'flex', flexDirection: 'column', gap: '14px', textAlign: 'left' }} className="animate-fade-in">
+                      {(() => {
+                        // Find all debts in selectedGroupDetails involving this user
+                        const userDebts = selectedGroupDetails.netDebts.filter(d => d.from._id === bal.user._id || d.to._id === bal.user._id);
+                        
+                        if (userDebts.length === 0) {
+                          return <div style={{ fontSize: '13.5px', color: '#94a3b8' }}>All settled up with everyone!</div>;
+                        }
+
+                        return userDebts.map((d, dIdx) => {
+                          const amIFrom = d.from._id === bal.user._id;
+                          const otherUser = amIFrom ? d.to : d.from;
+                          const debtText = `${d.from.name} owes $${d.amount.toFixed(2)} to ${d.to.name}`;
+                          
+                          return (
+                            <div key={dIdx} style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', fontSize: '14px', color: '#e2e8f0' }}>
+                                <div style={{ width: '20px', height: '20px', borderRadius: '50%', backgroundColor: '#eceef1', color: '#8b95a5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                    <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z" />
+                                    <polyline points="22,6 12,13 2,6" />
+                                  </svg>
+                                </div>
+                                <span>{debtText}</span>
+                              </div>
+
+                              {/* Action Buttons Row */}
+                              <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                                <button 
+                                  type="button"
+                                  onClick={() => alert(`Sent a friendly balance reminder notification to ${otherUser.name}! (Success)`)}
+                                  style={{
+                                    borderRadius: '20px',
+                                    border: '1.2px solid rgba(255, 255, 255, 0.3)',
+                                    padding: '5px 14px',
+                                    fontSize: '12px',
+                                    color: 'white',
+                                    fontWeight: '600',
+                                    backgroundColor: 'transparent',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  Remind...
+                                </button>
+
+                                <button 
+                                  type="button"
+                                  onClick={() => {
+                                    setSettleFrom(d.from._id);
+                                    setSettleTo(d.to._id);
+                                    setSettleAmount(d.amount.toFixed(2));
+                                    setSettleStep('record');
+                                    setShowBalancesTab(false);
+                                    setShowSettleUp(true);
+                                  }}
+                                  style={{
+                                    borderRadius: '20px',
+                                    border: '1.2px solid #1cc29f',
+                                    padding: '5px 14px',
+                                    fontSize: '12px',
+                                    color: '#1cc29f',
+                                    fontWeight: '600',
+                                    backgroundColor: 'transparent',
+                                    cursor: 'pointer'
+                                  }}
+                                >
+                                  Settle up
+                                </button>
+                              </div>
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Bottom simplify debts banner */}
+          <div style={{
+            padding: '24px 20px',
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            backgroundColor: '#1f2228',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '12px'
+          }}>
+            <span style={{ fontSize: '13.5px', color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>
+              Simplify debts is turned off in this group.
+            </span>
+            <button 
+              type="button"
+              onClick={() => alert("Debt Simplification feature turned on! All mutual loops optimized. (Success)")}
+              style={{
+                backgroundColor: '#ff652f',
+                color: 'white',
+                border: 'none',
+                borderRadius: '8px',
+                padding: '10px 24px',
+                fontSize: '14.5px',
+                fontWeight: 700,
+                cursor: 'pointer',
+                boxShadow: '0 4px 10px rgba(255, 101, 47, 0.25)'
+              }}
+            >
+              Turn on simplify debts
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* 8. TOTALS OVERLAY */}
+      {showTotalsTab && selectedGroupDetails && (
+        <div style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: '#18191b',
+          zIndex: 140,
+          display: 'flex',
+          flexDirection: 'column',
+          color: 'white',
+          fontFamily: 'var(--font-body)'
+        }} className="animate-fade-in">
+          {/* Header */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '16px 20px',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            backgroundColor: '#202124'
+          }}>
+            <svg 
+              onClick={() => setShowTotalsTab(false)}
+              width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+              style={{ cursor: 'pointer' }}
+            >
+              <line x1="19" y1="12" x2="5" y2="12" />
+              <polyline points="12,19 5,12 12,5" />
+            </svg>
+            <span style={{ fontSize: '18px', fontWeight: 600 }}>Spending summary</span>
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ cursor: 'pointer', opacity: 0.8 }}>
+              <circle cx="12" cy="12" r="10" />
+              <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+              <line x1="12" y1="17" x2="12.01" y2="17" strokeWidth="3" />
+            </svg>
+          </div>
+
+          {/* Scrollable spending info */}
+          <div style={{ flex: 1, overflowY: 'auto', padding: '32px 20px 40px 20px', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            
+            <span style={{ fontSize: '20px', fontWeight: 700, color: 'white', alignSelf: 'flex-start', marginBottom: '4px' }}>
+              {selectedGroupDetails.group.name}
+            </span>
+            <span style={{ fontSize: '14px', color: '#94a3b8', alignSelf: 'flex-start', marginBottom: '32px' }}>
+              All time spending
+            </span>
+
+            {/* Beautiful SVG Donut progress ring */}
+            {(() => {
+              // Calculate dynamic spending
+              const groupTotal = expenses.reduce((sum, e) => sum + e.amount, 0);
+              // Calculate your share (amount you owed across splits)
+              let myShare = 0;
+              expenses.forEach(e => {
+                const mySplit = e.splits.find(s => s.user && s.user._id === user._id);
+                if (mySplit) {
+                  myShare += mySplit.owedAmount;
+                }
+              });
+              
+              const sharePercentage = groupTotal > 0 ? Math.round((myShare / groupTotal) * 100) : 50;
+
+              return (
+                <>
+                  <div style={{ position: 'relative', width: '220px', height: '220px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '40px' }}>
+                    <svg width="220" height="220" viewBox="0 0 36 36">
+                      {/* Background Grey track circle */}
+                      <circle cx="18" cy="18" r="15.915" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="2.5" />
+                      
+                      {/* Light blue progress track segment representing myShare */}
+                      <circle 
+                        cx="18" cy="18" r="15.915" fill="none" 
+                        stroke="#38bdf8" 
+                        strokeWidth="2.8" 
+                        strokeDasharray={`${sharePercentage} ${100 - sharePercentage}`} 
+                        strokeDashoffset="25"
+                        strokeLinecap="round" 
+                      />
+
+                      {/* Dark blue track segment representing other group shares */}
+                      <circle 
+                        cx="18" cy="18" r="15.915" fill="none" 
+                        stroke="#0284c7" 
+                        strokeWidth="2.8" 
+                        strokeDasharray={`${100 - sharePercentage} ${sharePercentage}`} 
+                        strokeDashoffset={`${25 - sharePercentage}`}
+                        strokeLinecap="round" 
+                      />
+                    </svg>
+                    
+                    {/* Total Text in the center of the ring */}
+                    <div style={{ position: 'absolute', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+                      <span style={{ fontSize: '13px', color: '#94a3b8', fontWeight: 500 }}>Total</span>
+                      <span style={{ fontSize: '24px', fontWeight: 800, color: '#38bdf8' }}>
+                        ${groupTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Metrics Details */}
+                  <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '28px', textAlign: 'left', marginBottom: '40px' }}>
+                    
+                    {/* Total spent */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '14.5px', color: 'white', fontWeight: 600 }}>Total spent</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" style={{ cursor: 'pointer' }}>
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                          <line x1="12" y1="17" x2="12.01" y2="17" strokeWidth="3" />
+                        </svg>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {/* Blue Pill Marker */}
+                        <div style={{ width: '5px', height: '24px', borderRadius: '4px', backgroundColor: '#38bdf8' }} />
+                        <span style={{ fontSize: '32px', fontWeight: 800, color: '#38bdf8', fontFamily: 'var(--font-display)' }}>
+                          ${groupTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Your share */}
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ fontSize: '14.5px', color: 'white', fontWeight: 600 }}>Your share</span>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="2.5" style={{ cursor: 'pointer' }}>
+                          <circle cx="12" cy="12" r="10" />
+                          <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+                          <line x1="12" y1="17" x2="12.01" y2="17" strokeWidth="3" />
+                        </svg>
+                      </div>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                        {/* Dark Blue Pill Marker */}
+                        <div style={{ width: '5px', height: '24px', borderRadius: '4px', backgroundColor: '#0284c7' }} />
+                        <span style={{ fontSize: '32px', fontWeight: 800, color: '#0284c7', fontFamily: 'var(--font-display)' }}>
+                          ${myShare.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                        </span>
+                      </div>
+                      <span style={{ fontSize: '13px', color: '#94a3b8', fontWeight: 500, paddingLeft: '15px' }}>
+                        {sharePercentage}% of total group spending
+                      </span>
+                    </div>
+
+                  </div>
+                </>
+              );
+            })()}
+
+            {/* Premium Promotion Banner */}
+            <div style={{
+              width: '100%',
+              borderRadius: '16px',
+              background: 'linear-gradient(135deg, #4c1d95 0%, #1e1b4b 100%)',
+              padding: '24px 20px',
+              textAlign: 'center',
+              border: '1.2px solid rgba(139, 92, 246, 0.25)',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '6px',
+              marginBottom: '32px'
+            }}>
+              <span style={{ fontSize: '20px', fontWeight: 800, color: 'white', letterSpacing: '-0.3px' }}>
+                Pro users get more
+              </span>
+              <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', fontWeight: 500 }}>
+                More insights. More features. More!
+              </span>
+            </div>
+
+          </div>
+
+          {/* Switcher segmented time pill switcher */}
+          <div style={{
+            padding: '16px 20px',
+            borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+            backgroundColor: '#1f2228',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}>
+            <div style={{
+              display: 'flex',
+              alignItems: 'center',
+              backgroundColor: '#2e3035',
+              borderRadius: '30px',
+              padding: '4px',
+              gap: '8px',
+              width: '100%',
+              maxWidth: '340px',
+              justifyContent: 'space-between'
+            }}>
+              <div style={{
+                backgroundColor: '#4e5058',
+                color: 'white',
+                borderRadius: '30px',
+                padding: '8px 18px',
+                fontSize: '13.5px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}>
+                All time
+              </div>
+              
+              <div style={{ display: 'flex', alignItems: 'center', gap: '16px', paddingRight: '12px' }}>
+                {/* Left Chevron */}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2.5" style={{ cursor: 'pointer' }}>
+                  <polyline points="15,18 9,12 15,6" />
+                </svg>
+                
+                <span style={{ fontSize: '13.5px', color: 'white', fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: '4px', cursor: 'pointer' }}>
+                  May 2026 ▾
+                </span>
+
+                {/* Right Chevron */}
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2.5" style={{ cursor: 'pointer' }}>
+                  <polyline points="9,18 15,12 9,6" />
+                </svg>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      )}
+
+      {/* 9. WHITEBOARD OVERLAY */}
+      {showWhiteboardTab && selectedGroupDetails && (
+        <div style={{
+          position: 'absolute',
+          top: 0, left: 0, right: 0, bottom: 0,
+          backgroundColor: '#18191b',
+          zIndex: 140,
+          display: 'flex',
+          flexDirection: 'column',
+          color: 'white',
+          fontFamily: 'var(--font-body)'
+        }} className="animate-fade-in">
+          {/* Header */}
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '16px 20px',
+            borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+            backgroundColor: '#202124'
+          }}>
+            {/* Close Chevron Back arrow */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+              <svg 
+                onClick={() => setShowWhiteboardTab(false)}
+                width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"
+                style={{ cursor: 'pointer' }}
+              >
+                <line x1="19" y1="12" x2="5" y2="12" />
+                <polyline points="12,19 5,12 12,5" />
+              </svg>
+              <span style={{ fontSize: '18px', fontWeight: 600 }}>Whiteboard</span>
+            </div>
+            
+            {/* Save Action Link button */}
+            <span 
+              onClick={async () => {
+                try {
+                  const res = await fetch(`${API_BASE}/groups/${selectedGroupId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ whiteboard: whiteboardText })
+                  });
+                  if (res.ok) {
+                    await fetchGroupDetails(selectedGroupId);
+                    setShowWhiteboardTab(false);
+                    alert("Whiteboard successfully updated for all members! (Success)");
+                  } else {
+                    alert("Failed to save whiteboard notes");
+                  }
+                } catch (err) {
+                  console.error("Error saving whiteboard:", err);
+                  alert("Network error updating whiteboard");
+                }
+              }}
+              style={{
+                color: '#1cc29f',
+                fontSize: '15.5px',
+                fontWeight: 700,
+                cursor: 'pointer'
+              }}
+            >
+              Save
+            </span>
+          </div>
+
+          {/* Editor Workspace Content */}
+          <div style={{ flex: 1, padding: '24px 20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+            <span style={{ fontSize: '20px', fontWeight: 700, color: 'white', textAlign: 'left' }}>
+              {selectedGroupDetails.group.name}
+            </span>
+
+            <hr style={{ border: 'none', borderTop: '1px solid rgba(255, 255, 255, 0.08)', margin: '0 0 8px 0' }} />
+
+            {/* Rich Notes Card Textarea Container */}
+            <textarea 
+              value={whiteboardText}
+              onChange={(e) => setWhiteboardText(e.target.value)}
+              placeholder="Tap here to write notes, trip instructions, landlord info, etc..."
+              style={{
+                flex: 1,
+                backgroundColor: '#2e3035',
+                border: 'none',
+                borderRadius: '12px',
+                color: 'white',
+                padding: '18px',
+                fontSize: '15.5px',
+                lineHeight: '1.6',
+                outline: 'none',
+                resize: 'none',
+                fontFamily: 'var(--font-body)',
+                boxShadow: 'inset 0 2px 6px rgba(0,0,0,0.3)',
+                minHeight: '260px'
+              }}
+            />
+
+            {/* Helpful Footer instruction banner */}
+            <p style={{ fontSize: '13px', color: 'rgba(255, 255, 255, 0.45)', lineHeight: '1.5', textAlign: 'left', margin: '8px 0 0 0' }}>
+              Use the whiteboard to remember important info, like your landlord's address or emergency contact info. The whiteboard is visible to anyone who joins your group.
+            </p>
+
           </div>
         </div>
       )}

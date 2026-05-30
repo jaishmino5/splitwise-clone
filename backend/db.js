@@ -21,6 +21,7 @@ const GroupSchema = new mongoose.Schema({
   name: String,
   description: String,
   members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  whiteboard: { type: String, default: '' },
   createdAt: { type: Date, default: Date.now }
 });
 
