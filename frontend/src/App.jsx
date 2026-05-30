@@ -82,8 +82,38 @@ const getCategoryIcon = (desc) => {
 
 export default function App() {
   // Navigation and Session State
-  const [user, setUser] = useState(null); // Current user
-  const [page, setPage] = useState('landing'); // 'landing', 'login', 'signup', 'dashboard', 'group-details'
+  const [user, setUser] = useState(() => {
+    const savedUser = localStorage.getItem('splitwise_session_user');
+    const savedTimestamp = localStorage.getItem('splitwise_session_timestamp');
+    if (savedUser && savedTimestamp) {
+      const elapsed = Date.now() - parseInt(savedTimestamp, 10);
+      const oneDayMs = 24 * 60 * 60 * 1000;
+      if (elapsed < oneDayMs) {
+        try {
+          return JSON.parse(savedUser);
+        } catch (e) {
+          return null;
+        }
+      } else {
+        localStorage.removeItem('splitwise_session_user');
+        localStorage.removeItem('splitwise_session_timestamp');
+      }
+    }
+    return null;
+  }); // Current user with 1-day persistent session
+  
+  const [page, setPage] = useState(() => {
+    const savedUser = localStorage.getItem('splitwise_session_user');
+    const savedTimestamp = localStorage.getItem('splitwise_session_timestamp');
+    if (savedUser && savedTimestamp) {
+      const elapsed = Date.now() - parseInt(savedTimestamp, 10);
+      const oneDayMs = 24 * 60 * 60 * 1000;
+      if (elapsed < oneDayMs) {
+        return 'dashboard';
+      }
+    }
+    return 'landing';
+  }); // Current active page state
   const [selectedGroupId, setSelectedGroupId] = useState(null);
   const [activeTab, setActiveTab] = useState('groups'); // 'groups', 'friends', 'activity', 'account'
   const [tutorialStep, setTutorialStep] = useState(1);
@@ -129,6 +159,19 @@ export default function App() {
     contactsPickerModeRef.current = mode;
     _setContactsPickerMode(mode);
   };
+
+  // Synchronize user session persistence details inside localStorage
+  useEffect(() => {
+    if (user) {
+      localStorage.setItem('splitwise_session_user', JSON.stringify(user));
+      if (!localStorage.getItem('splitwise_session_timestamp')) {
+        localStorage.setItem('splitwise_session_timestamp', Date.now().toString());
+      }
+    } else {
+      localStorage.removeItem('splitwise_session_user');
+      localStorage.removeItem('splitwise_session_timestamp');
+    }
+  }, [user]);
 
   // Form Inputs
   const [authEmail, setAuthEmail] = useState('');
